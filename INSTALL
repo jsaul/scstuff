@@ -1,0 +1,11 @@
+It is a good idea to install scstuff along with your SeisComP
+Python codes. The simplest way to do that is by copying the scstuff
+subfolder to the same folder as the SeisComP Python codes.
+
+If your Python installation is under $HOME/seiscomp, this would mean
+
+cp -pr scstuff $HOME/seiscomp/lib/python
+
+You can also use the setup.py script, of course:
+
+python setup.py install --home=$HOME/seiscomp
