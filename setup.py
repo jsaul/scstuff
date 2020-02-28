@@ -20,9 +20,9 @@ setup(
     },
 
     scripts = [
-        "apps/xmldump/scstuff.xml-dump-with-mt.py",
-        "apps/xmldump/scstuff.xml-anonymize.py",
-        "apps/xmldump/scstuff.xml-to-mt-txt.py",
+        "apps/xml/scstuff.xml-dump-with-mt.py",
+        "apps/xml/scstuff.xml-anonymize.py",
+        "apps/xml/scstuff.xml-to-mt-txt.py",
         "apps/teleseismic-traveltimes/scstuff.ttt.py",
         "apps/set-magnitude-type/scstuff.set-magtype.py"
     ]
