@@ -203,11 +203,21 @@ def fm2txt(fm):
         lines.append("  N       %5.2f      %2d      %3d" % (Nval/q, Ndip, Nstr))
         lines.append("  P       %5.2f      %2d      %3d" % (Pval/q, Pdip, Pstr))
 
+        lines.append("")
+        moment = mt.scalarMoment().value()
+        expo = int(log10(moment))
+        moment *= 10**-expo
+        np1 = fm.nodalPlanes().nodalPlane1();
+        np2 = fm.nodalPlanes().nodalPlane2();
+        lines.append("Best Double Couple:Mo=%3.1f*10**%d" % (moment, expo))
+        lines.append(" NP1:Strike=%3d Dip=%2d Slip= %3d" % (np1.strike().value(), np1.dip().value(), np1.rake().value()))
+        lines.append(" NP2:       %3d     %2d       %3d" % (np2.strike().value(), np2.dip().value(), np2.rake().value()))
+
         Mxx, Myy, Mzz, Mxy, Mxz, Myz = Mtt, Mpp, Mrr, -Mtp, Mrt, -Mrp
         txt = renderTensor(Mxx, Myy, Mzz, Mxy, Mxz, Myz)
         lines.append(txt)
     except:
-        pass
+        raise
 
     txt = "\n".join(lines)
     return txt
