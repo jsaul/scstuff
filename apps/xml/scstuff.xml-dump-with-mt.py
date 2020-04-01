@@ -12,7 +12,7 @@
 
 import sys
 import seiscomp.client, seiscomp.datamodel, seiscomp.io
-import sc3stuff.util
+import scstuff.util
 
 
 class MomentTensorDumper(seiscomp.client.Application):
@@ -128,7 +128,7 @@ class MomentTensorDumper(seiscomp.client.Application):
             self.do_one_event(evid, ep)
 
         # finally dump event parameters as formatted XML archive to stdout
-        sc3stuff.util.writeEventParametersToXML(ep)
+        scstuff.util.writeEventParametersToXML(ep)
 
         del ep
         return True
