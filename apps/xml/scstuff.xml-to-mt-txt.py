@@ -129,7 +129,7 @@ def fm2txt(fm):
     except:
         pass
 
-    tim = triggeringOrigin.time().value().toString("%y/%m/%d %H:%M:%S.%1f")
+    tim = triggeringOrigin.time().value().toString("%y/%m/%d %H:%M:%S.%2f")
     lat = triggeringOrigin.latitude().value()
     lon = triggeringOrigin.longitude().value()
     regionName = seiscomp.seismology.Regions.getRegionName(lat, lon)
@@ -158,56 +158,65 @@ def fm2txt(fm):
 
     depth = int(derivedOrigin.depth().value()+0.5)
     stationCount = derivedOrigin.quality().usedStationCount()
-    lines.append("Depth: %3d %21s" % (depth, ("No. of sta: %d" % stationCount)))
+    lines.append("Depth %3d  %21s" % (depth, ("No. of sta: %d" % stationCount)))
 
-    try:
-        expo = 0
-        tensor = mt.tensor()
-        Mrr = tensor.Mrr().value()
-        Mtt = tensor.Mtt().value()
-        Mpp = tensor.Mpp().value()
-        Mrt = tensor.Mrt().value()
-        Mrp = tensor.Mrp().value()
-        Mtp = tensor.Mtp().value()
-        expo = max(expo, log10(abs(Mrr)))
-        expo = max(expo, log10(abs(Mtt)))
-        expo = max(expo, log10(abs(Mpp)))
-        expo = max(expo, log10(abs(Mrt)))
-        expo = max(expo, log10(abs(Mrp)))
-        expo = max(expo, log10(abs(Mtp)))
+    expo = 0
+    tensor = mt.tensor()
+    Mrr = tensor.Mrr().value()
+    Mtt = tensor.Mtt().value()
+    Mpp = tensor.Mpp().value()
+    Mrt = tensor.Mrt().value()
+    Mrp = tensor.Mrp().value()
+    Mtp = tensor.Mtp().value()
+    expo = max(expo, log10(abs(Mrr)))
+    expo = max(expo, log10(abs(Mtt)))
+    expo = max(expo, log10(abs(Mpp)))
+    expo = max(expo, log10(abs(Mrt)))
+    expo = max(expo, log10(abs(Mrp)))
+    expo = max(expo, log10(abs(Mtp)))
 
-        Tval = fm.principalAxes().tAxis().length().value()
-        Nval = fm.principalAxes().nAxis().length().value()
-        Pval = fm.principalAxes().pAxis().length().value()
+    Tval = fm.principalAxes().tAxis().length().value()
+    Nval = fm.principalAxes().nAxis().length().value()
+    Pval = fm.principalAxes().pAxis().length().value()
 
-        expo = max(expo, log10(abs(Tval)))
-        expo = max(expo, log10(abs(Nval)))
-        expo = max(expo, log10(abs(Pval)))
-        expo = int(expo)
+    expo = max(expo, log10(abs(Tval)))
+    expo = max(expo, log10(abs(Nval)))
+    expo = max(expo, log10(abs(Pval)))
+    expo = int(expo)
 
-        Tdip = fm.principalAxes().tAxis().plunge().value()
-        Tstr = fm.principalAxes().tAxis().azimuth().value()
-        Ndip = fm.principalAxes().nAxis().plunge().value()
-        Nstr = fm.principalAxes().nAxis().azimuth().value()
-        Pdip = fm.principalAxes().pAxis().plunge().value()
-        Pstr = fm.principalAxes().pAxis().azimuth().value()
+    Tdip = fm.principalAxes().tAxis().plunge().value()
+    Tstr = fm.principalAxes().tAxis().azimuth().value()
+    Ndip = fm.principalAxes().nAxis().plunge().value()
+    Nstr = fm.principalAxes().nAxis().azimuth().value()
+    Pdip = fm.principalAxes().pAxis().plunge().value()
+    Pstr = fm.principalAxes().pAxis().azimuth().value()
 
-        lines.append("Moment Tensor;   Scale 10**%d Nm" % expo)
-        q = 10**expo
-        lines.append("  Mrr=%5.2f       Mtt=%5.2f" % (Mrr/q, Mtt/q))
-        lines.append("  Mpp=%5.2f       Mrt=%5.2f" % (Mpp/q, Mrt/q))
-        lines.append("  Mrp=%5.2f       Mtp=%5.2f" % (Mrp/q, Mtp/q))
+    lines.append("Moment Tensor;   Scale 10**%d Nm" % expo)
+    q = 10**expo
+    lines.append("  Mrr=%5.2f       Mtt=%5.2f" % (Mrr/q, Mtt/q))
+    lines.append("  Mpp=%5.2f       Mrt=%5.2f" % (Mpp/q, Mrt/q))
+    lines.append("  Mrp=%5.2f       Mtp=%5.2f" % (Mrp/q, Mtp/q))
 
-        lines.append("Principal axes:")
-        lines.append("  T  Val= %5.2f  Plg=%2d  Azm=%3d" % (Tval/q, Tdip, Tstr))
-        lines.append("  N       %5.2f      %2d      %3d" % (Nval/q, Ndip, Nstr))
-        lines.append("  P       %5.2f      %2d      %3d" % (Pval/q, Pdip, Pstr))
+    lines.append("Principal axes:")
+    lines.append("  T  Val= %5.2f  Plg=%2d  Azm=%3d" % (Tval/q, Tdip, Tstr))
+    lines.append("  N       %5.2f      %2d      %3d" % (Nval/q, Ndip, Nstr))
+    lines.append("  P       %5.2f      %2d      %3d" % (Pval/q, Pdip, Pstr))
 
-        Mxx, Myy, Mzz, Mxy, Mxz, Myz = Mtt, Mpp, Mrr, -Mtp, Mrt, -Mrp
-        txt = renderTensor(Mxx, Myy, Mzz, Mxy, Mxz, Myz)
-        lines.append(txt)
-    except:
-        pass
+    lines.append("")
+    moment = mt.scalarMoment().value()
+    expo = int(log10(moment))
+    moment *= 10**-expo
+    np1 = fm.nodalPlanes().nodalPlane1();
+    np2 = fm.nodalPlanes().nodalPlane2();
+    s1, d1, r1 = np1.strike().value(), np1.dip().value(), np1.rake().value()
+    s2, d2, r2 = np2.strike().value(), np2.dip().value(), np2.rake().value()
+    lines.append("Best Double Couple:Mo=%3.1f*10**%d" % (moment, expo))
+    lines.append(" NP1:Strike=%3d Dip=%2d Slip=%4d" % (s1, d1, r1))
+    lines.append(" NP2:       %3d     %2d      %4d" % (s2, d2, r2))
+
+    Mxx, Myy, Mzz, Mxy, Mxz, Myz = Mtt, Mpp, Mrr, -Mtp, Mrt, -Mrp
+    txt = renderTensor(Mxx, Myy, Mzz, Mxy, Mxz, Myz)
+    lines.append(txt)
 
     txt = "\n".join(lines)
     return txt

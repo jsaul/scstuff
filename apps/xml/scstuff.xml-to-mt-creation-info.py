@@ -10,7 +10,7 @@
 
 import sys
 import seiscomp.client, seiscomp.datamodel, seiscomp.io
-import sc3stuff.util
+import scstuff.util
 
 
 def meta(fm):
@@ -50,7 +50,7 @@ class MomentTensorInfoDumper(seiscomp.client.Application):
 
 
     def run(self):
-        ep = sc3stuff.util.readEventParametersFromXML(self.xmlInputFile)
+        ep = scstuff.util.readEventParametersFromXML(self.xmlInputFile)
         for i in range(ep.focalMechanismCount()):
             fm = ep.focalMechanism(i)
             txt = meta(fm)

@@ -8,4 +8,4 @@ cp -pr scstuff $HOME/seiscomp/lib/python
 
 You can also use the setup.py script, of course:
 
-python setup.py install --home=$HOME/seiscomp
+~/seiscomp/bin/seiscomp-python setup.py install --home=$HOME/seiscomp
