@@ -1,8 +1,6 @@
-#!/usr/bin/env seiscomp-python
-from __future__ import print_function
-import sys, os, errno, gc, hashlib, logging, logging.handlers
+import sys, os, gc, md5, logging, logging.handlers, StringIO
 import seiscomp.client, seiscomp.datamodel, seiscomp.io, seiscomp.logging
-from io import BytesIO
+
 
 def objectToXML(obj, expName = "trunk"):
     # based on code contributed by Stephan Herrnkind
@@ -30,12 +28,12 @@ def objectToXML(obj, expName = "trunk"):
     exp.setFormattedOutput(True)
 
     try:
-        io = BytesIO()
+        io = StringIO.StringIO()
         sink = Sink(io)
         exp.write(sink, obj)
         return io.getvalue().strip()
-    except Exception as err:
-        seiscomp.logging.error(str(err))
+    except Exception, e:
+        seiscomp.logging.error(error + str(e))
 
     return None
 
@@ -55,7 +53,6 @@ class MyLogHandler(logging.handlers.TimedRotatingFileHandler):
 class NotifierLogger(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        argv = [ bytes(a.encode()) for a in argv ]
         seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(True)
         self.addMessagingSubscription("PICK")
@@ -70,27 +67,12 @@ class NotifierLogger(seiscomp.client.Application):
         seiscomp.datamodel.PublicObject.SetRegistrationEnabled(False) 
         self._logger = logging.getLogger("Rotating Log")
         self._logger.setLevel(logging.INFO)
-
-    def createCommandLineDescription(self):
-        self.commandline().addGroup("Output")
-        self.commandline().addStringOption("Output", "prefix", "path/file prefix to generate output file names")
-        return True
-
-    def validateParameters(self):
-        if not seiscomp.client.Application.validateParameters(self):
-            return False
-        try:
-            self._prefix = self.commandline().optionString("prefix")
-        except:
-            self._prefix = "notifier-log"
-        handler = MyLogHandler(self._prefix, when="h", interval=1, backupCount=48)
+        handler = MyLogHandler("notifier-log", when="d", interval=1, backupCount=48)
         self._logger.addHandler(handler)
-        return True
 
     def _writeNotifier(self, xml):
         now = seiscomp.core.Time.GMT().toString("%Y-%m-%dT%H:%M:%S.%f000000")[:26]+"Z"
-#       self._logger.info("####  %s  %s  %d bytes" % (now, hashlib.md5(xml).encode('utf-8').hexdigest(), len(xml)))
-        self._logger.info("####  %s  %s  %d bytes" % (now, hashlib.md5(xml).hexdigest(), len(xml)))
+        self._logger.info("####  %s  %s  %d bytes" % (now, md5.new(xml).hexdigest(), len(xml)))
         self._logger.info(xml)
         gc.collect()
 
