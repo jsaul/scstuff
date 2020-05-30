@@ -45,6 +45,7 @@ class InvApp(seiscomp.client.Application):
         for inet in range(nnet):
             net = inv.network(inet)
             dbr.load(net);
+            seiscomp.logging.debug("Working on network %3d/%d - %s" % (inet+1, nnet, net.code()))
             nsta = net.stationCount()
             for ista in range(nsta):
                 sta = net.station(ista)
