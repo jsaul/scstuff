@@ -1,3 +1,4 @@
 #!/bin/sh
 
-scpython pick-client.py -u pick-client -H geofon-proc --debug
+exec ~/seiscomp/bin/seiscomp exec seiscomp-python \
+    pickclient.py -u xyzabc -H geofon-proc --debug
