@@ -1,67 +1,79 @@
 #!/usr/bin/env seiscomp-python
 # -*- coding: utf-8 -*-
-############################################################################
-#                                                                          #
-#    Copyright (C) by GFZ Potsdam                                     #
-#                                                                          #
-#    author: Joachim Saul                                                  #
-#    email:  saul@gfz-potsdam.de                                           #
-#                                                                          #
-############################################################################
+###########################################################################
+# Copyright (C) GFZ Potsdam                                               #
+# All rights reserved.                                                    #
+#                                                                         #
+# Author: Joachim Saul (saul@gfz-potsdam.de)                              #
+#                                                                         #
+# GNU Affero General Public License Usage                                 #
+# This file may be used under the terms of the GNU Affero                 #
+# Public License version 3.0 as published by the Free Software Foundation #
+# and appearing in the file LICENSE included in the packaging of this     #
+# file. Please review the following information to ensure the GNU Affero  #
+# Public License version 3.0 requirements will be met:                    #
+# https://www.gnu.org/licenses/agpl-3.0.html.                             #
+###########################################################################
 
-from __future__ import print_function
 import sys, socket
-import seiscomp.core, seiscomp.datamodel
-import sc3stuff.util
-from sc3stuff.eventloader import EventLoaderApp
+import seiscomp.core, seiscomp.datamodel, seiscomp.client, seiscomp.logging
 
 
-class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
+class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        EventLoaderApp.__init__(self, argc, argv)
-        self.setXmlEnabled(False)
+        seiscomp.client.Application.__init__(self, argc, argv)
+        self.setDatabaseEnabled(False,False)
         self.setMessagingEnabled(True)
 
 
     def createCommandLineDescription(self):
-        if not EventLoaderApp.createCommandLineDescription(self):
-            return False
+        self.commandline().addGroup("Config");
+        self.commandline().addStringOption("Config", "author", "Set the author name");
+        self.commandline().addStringOption("Config", "time",   "Set the publication time");
+        self.commandline().addGroup("Event")
+        self.commandline().addStringOption("Event", "event,E", "specify event publicID")
         self.commandline().addGroup("Magnitude")
-        self.commandline().addStringOption("Magnitude", "magnitude-type", "type of magnitude to set preferred")
-        self.commandline().addStringOption("Magnitude", "dump-magnitude-types", "dump available magnitude types for this event")
-        return True
+        self.commandline().addStringOption("Magnitude", "magnitude-type,Y", "type of magnitude to set preferred")
+        return seiscomp.client.Application.createCommandLineDescription(self)
 
 
     def validateParameters(self):
-        if not EventLoaderApp.validateParameters(self):
+        if not seiscomp.client.Application.validateParameters(self):
             return False
 
+        try:
+            self._eventID = self.commandline().optionString("event")
+        except:
+            return False
         try:
             self._magType = self.commandline().optionString("magnitude-type")
         except:
             self._magType = None
         return True
 
-
-#   def _getMagnitudeTypes(self):
-#       return []
-
-
-#   def _setPreferredMagnitudeType(self, magnitudeType):
-#       # returns False if magnitude type cannot be set
-#       # i.e. the magnitude is not available for this event
-#       return True
-
-    # see ./src/gui-qt4/libs/seiscomp3/gui/datamodel/eventedit.cpp
-
     def sendJournal(self, action, params):
+        time = seiscomp.core.Time.GMT()
+        try:
+            tstr = self.commandline().optionString("time")
+        except:
+            tstr = None
+        if tstr and not time.fromString(tstr, "%FT%T.%fZ"):
+            err = "failed to parse time string '%s'" % tstr
+            seiscomp.logging.error(err)
+            return False
+        try:
+            author = self.commandline().optionString("author")
+        except:
+#           author = self.author()
+            author = self.name()+"@"+socket.gethostname()
+ 
         j = seiscomp.datamodel.JournalEntry()
         j.setObjectID(self._eventID)
         j.setAction(action)
         j.setParameters(params)
-        j.setSender(self.name()+"@"+socket.gethostname())
-        j.setCreated(seiscomp.core.Time.GMT())
+        j.setSender(author)
+        j.setCreated(time)
         n = seiscomp.datamodel.Notifier("Journaling", seiscomp.datamodel.OP_ADD, j)
         nm = seiscomp.datamodel.NotifierMessage()
         nm.attach(n)
@@ -71,6 +83,7 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
 
 
     def fixMw(self):
+        seiscomp.logging.debug("Fixing magnitude type to Mw for event "+self._eventID) 
         return self.sendJournal("EvPrefMw", "true")
 
     def releaseMw(self):
@@ -84,13 +97,7 @@ class PreferredMagnitudeTypeSetterApp(EventLoaderApp):
 
 
     def run(self):
-#       if not EventLoaderApp.run(self):
-#           return False
-
-        ep = self.readEventParameters()
-
-        event, origin, pick, ampl, fm = sc3stuff.util.extractEventParameters(ep, self._eventID)
-
+        print(self._magType)
         if self._magType is not None:
             if self._magType == "Mw":
                 return self.fixMw()
