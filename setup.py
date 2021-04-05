@@ -14,6 +14,7 @@ setup(
         'scstuff' : [
             "__init__.py",
             "util.py",
+            "dbutil.py",
             "mtutil.py",
             "inventory",
             "eventloader.py"
