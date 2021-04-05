@@ -24,7 +24,7 @@ def readEventParametersFromXML(xmlFile="-"):
 def writeEventParametersToXML(ep, xmlFile="-", formatted=True):
     ar = seiscomp.io.XMLArchive()
     ar.setFormattedOutput(formatted)
-    if ar.create(xmlFile)
+    if ar.create(xmlFile):
         ar.writeObject(ep)
         ar.close()
         return True

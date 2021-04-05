@@ -1,0 +1,4 @@
+#!/bin/sh
+
+test -z "$SEISCOMP_ROOT" && SEISCOMP_ROOT="~/seiscomp"
+exec $SEISCOMP_ROOT/bin/seiscomp exec seiscomp-python "$@"
