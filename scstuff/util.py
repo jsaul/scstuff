@@ -1,7 +1,8 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
 
-import seiscomp.core, seiscomp.datamodel, seiscomp.io
+import seiscomp.core, seiscomp.datamodel, seiscomp.io, seiscomp.logging
+import operator
 
 def readEventParametersFromXML(xmlFile="-"):
     """
@@ -24,7 +25,7 @@ def readEventParametersFromXML(xmlFile="-"):
 def writeEventParametersToXML(ep, xmlFile="-", formatted=True):
     ar = seiscomp.io.XMLArchive()
     ar.setFormattedOutput(formatted)
-    if ar.create(xmlFile)
+    if ar.create(xmlFile):
         ar.writeObject(ep)
         ar.close()
         return True
@@ -245,11 +246,19 @@ def format_nslc_dots(wfid):
     return "%s.%s.%s.%s" % nslc(wfid)
 
 
+def isotimestamp(time, digits=3):
+    """
+    Convert a seiscomp.core.Time to a timestamp YYYY-MM-DDTHH:MM:SS.sssZ
+    """
+    return time.toString("%Y-%m-%dZ%H:%M:%S.%f000000")[:20+digits].strip(".")+"Z"
+
+
 def format_time(time, digits=3):
     """
     Convert a seiscomp.core.Time to a string
     """
     return time.toString("%Y-%m-%d %H:%M:%S.%f000000")[:20+digits].strip(".")
+
 
 def automatic(obj):
     return obj.evaluationMode() == seiscomp.datamodel.AUTOMATIC
@@ -261,3 +270,179 @@ def parseTime(s):
         if t.fromString(s, fmtstr):
             return t
     raise ValueError("could not parse time string '%s'" %s)
+
+
+def removeComments(obj):
+    """
+    Remove all comments from the specified object and its children
+    """
+    if obj is None:
+        return
+
+    tobj = type(obj)
+
+    if tobj in [
+        seiscomp.datamodel.Event,
+        seiscomp.datamodel.Magnitude,
+        seiscomp.datamodel.StationMagnitude,
+        seiscomp.datamodel.MomentTensor,
+        seiscomp.datamodel.Amplitude,
+        seiscomp.datamodel.Pick ]:
+
+        while obj.commentCount() > 0:
+            obj.removeComment(0)
+        return
+
+    if tobj is seiscomp.datamodel.Origin:
+        while obj.commentCount() > 0:
+            obj.removeComment(0)
+        for k in range(obj.magnitudeCount()):
+            removeComments(obj.magnitude(k))
+        for k in range(obj.stationMagnitudeCount()):
+            removeComments(obj.stationMagnitude(k))
+        # Note that SeisComP Arrival's have no comments
+
+    if tobj is seiscomp.datamodel.FocalMechanism:
+        while obj.commentCount() > 0:
+            obj.removeComment(0)
+        for k in range(obj.momentTensorCount()):
+            removeComments(obj.momentTensor(k))
+
+    if tobj is seiscomp.datamodel.EventParameters:
+        for i in range(ep.eventCount()):
+            removeComments(ep.event(i))
+        for i in range(ep.originCount()):
+            removeComments(ep.origin(i))
+        for i in range(ep.pickCount()):
+            removeComments(ep.pick(i))
+        for i in range(ep.amplitudeCount()):
+            removeComments(ep.amplitude(i))
+        for i in range(ep.focalMechanismCount()):
+            removeComments(ep.focalMechanism(i))
+
+
+def recursivelyRemoveComments(ep):
+    removeComments(ep)
+
+
+def _removeAuthor(obj):
+    try:
+        # Only if the object has a creationInfo
+        # AND the creationInfo has an author
+        c = obj.creationInfo()
+        a = obj.creationInfo().author()
+        if len(a) > 0:
+            obj.creationInfo().setAuthor("")
+    except:
+        pass
+
+
+def removeAuthorInfo(obj):
+    """
+    Remove all author information from the specified object and its children
+    """
+    if obj is None:
+        return
+
+    tobj = type(obj)
+
+    if tobj in [
+        seiscomp.datamodel.Event,
+        seiscomp.datamodel.Magnitude,
+        seiscomp.datamodel.StationMagnitude,
+        seiscomp.datamodel.MomentTensor,
+        seiscomp.datamodel.Amplitude,
+        seiscomp.datamodel.Pick ]:
+
+        _removeAuthor(obj)
+        return
+
+    if tobj is seiscomp.datamodel.Origin:
+        _removeAuthor(obj)
+        for k in range(obj.magnitudeCount()):
+            removeAuthorInfo(obj.magnitude(k))
+        for k in range(obj.stationMagnitudeCount()):
+            removeAuthorInfo(obj.stationMagnitude(k))
+        # Note that SeisComP Arrival's have no comments
+
+    if tobj is seiscomp.datamodel.FocalMechanism:
+        _removeAuthor(obj)
+        for k in range(obj.momentTensorCount()):
+            removeAuthorInfo(obj.momentTensor(k))
+
+    if tobj is seiscomp.datamodel.EventParameters:
+        for i in range(ep.eventCount()):
+            removeAuthorInfo(ep.event(i))
+        for i in range(ep.originCount()):
+            removeAuthorInfo(ep.origin(i))
+        for i in range(ep.pickCount()):
+            removeAuthorInfo(ep.pick(i))
+        for i in range(ep.amplitudeCount()):
+            removeAuthorInfo(ep.amplitude(i))
+        for i in range(ep.focalMechanismCount()):
+            removeAuthorInfo(ep.focalMechanism(i))
+
+
+def stripOrigin(origin):
+    """
+    Remove all arrivals and magnitudes from the origin.
+    
+    An origin loaded using query().getObject() is already
+    "naked" and this operation is not needed.
+    """
+    while origin.arrivalCount() > 0:
+        origin.removeArrival(0)
+    while origin.magnitudeCount() > 0:
+        origin.removeMagnitude(0)
+    while origin.stationMagnitudeCount() > 0:
+        origin.removeStationMagnitude(0)
+
+
+def sortedByCreationTime(objects):
+    """
+    Return the objects sorted by their creation time in ascending
+    order. For each of the objects, creationInfo.creationTime is
+    required to be available.
+    """
+    tmp = []
+    for obj in objects:
+        t = obj.creationInfo().creationTime()
+        tmp.append( (t, obj) )
+    tmp.sort(key=operator.itemgetter(0))
+    return [ o for (t,o) in tmp ]
+
+
+def status(obj):
+    try:
+        if obj.evaluationMode() == seiscomp.datamodel.MANUAL:
+            return "M"
+    except:
+        pass
+    return "A"
+
+
+def manualPickCount(origin, minWeight=0.5):
+    """
+    Count the manual picks contributing to the origin. Picks
+    contribute to the origin if the arrival.weight >= minWeight.
+
+    This requires the picks to be reachable via Pick.Find() i.e.
+    through the public object registry. If not registered, a pick
+    cannot be found.
+    """
+    count = 0
+    for i in range(origin.arrivalCount()):
+        a = origin.arrival(i)
+        if a.weight() < 0.5:
+            continue
+        pid = a.pickID()
+        p = seiscomp.datamodel.Pick.Find(pid)
+        if not p:
+            # might be more appropriate to raise an exception
+            seiscomp.logging.warning("Pick %s could not be found" % pid)
+            continue
+        if status(p) != "M":
+            continue
+        count += 1
+    return count
+
