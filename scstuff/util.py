@@ -147,6 +147,9 @@ def EventParametersIterator(ep):
         for k in range(org.magnitudeCount()):
             mag = org.magnitude(k)
             yield mag
+        for k in range(org.stationMagnitudeCount()):
+            mag = org.stationMagnitude(k)
+            yield mag
         for k in range(org.arrivalCount()):
             arr = org.arrival(k)
             yield arr
@@ -309,16 +312,16 @@ def removeComments(obj):
             removeComments(obj.momentTensor(k))
 
     if tobj is seiscomp.datamodel.EventParameters:
-        for i in range(ep.eventCount()):
-            removeComments(ep.event(i))
-        for i in range(ep.originCount()):
-            removeComments(ep.origin(i))
-        for i in range(ep.pickCount()):
-            removeComments(ep.pick(i))
-        for i in range(ep.amplitudeCount()):
-            removeComments(ep.amplitude(i))
-        for i in range(ep.focalMechanismCount()):
-            removeComments(ep.focalMechanism(i))
+        for i in range(obj.eventCount()):
+            removeComments(obj.event(i))
+        for i in range(obj.originCount()):
+            removeComments(obj.origin(i))
+        for i in range(obj.pickCount()):
+            removeComments(obj.pick(i))
+        for i in range(obj.amplitudeCount()):
+            removeComments(obj.amplitude(i))
+        for i in range(obj.focalMechanismCount()):
+            removeComments(obj.focalMechanism(i))
 
 
 def recursivelyRemoveComments(ep):
@@ -337,7 +340,7 @@ def _removeAuthor(obj):
         pass
 
 
-def removeAuthorInfo(obj):
+def removeAuthorInfo2(obj):
     """
     Remove all author information from the specified object and its children
     """
@@ -381,6 +384,23 @@ def removeAuthorInfo(obj):
             removeAuthorInfo(ep.amplitude(i))
         for i in range(ep.focalMechanismCount()):
             removeAuthorInfo(ep.focalMechanism(i))
+
+
+def removeAuthorInfo(ep):
+    """
+    Remove all author information from the specified EventParameters
+    instance and its children
+    """
+
+    emptyAuthor = ""
+
+    for obj in EventParametersIterator(ep):
+        try:
+            ci = obj.creationInfo()
+        except:
+            continue
+        ci.setAuthor(emptyAuthor)
+        obj.setCreationInfo(ci)
 
 
 def stripOrigin(origin):

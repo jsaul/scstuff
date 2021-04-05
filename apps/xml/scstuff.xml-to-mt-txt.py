@@ -6,54 +6,27 @@
 #
 #  python scxmldump-public-with-mt.py --debug -d "$db" -E "$evid" |
 #  python scxml-to-mt-bulletin.py
-#
 
-import sys
-import seiscomp.client, seiscomp.datamodel, seiscomp.io
+import sys, optparse
+import scstuff.util
 import scstuff.mtutil
 
+description="%prog - dump moment tensor information from XML files to text"
 
-class MomentTensorDumper(seiscomp.client.Application):
+p = optparse.OptionParser(usage="%prog filename[s] >", description=description)
+p.add_option("-v", "--verbose", action="store_true", help="run in verbose mode")
 
-    def __init__(self, argc, argv):
-        seiscomp.client.Application.__init__(self, argc, argv)
-        self.setMessagingEnabled(False)
-        self.setDatabaseEnabled(False, False)
-        self.xmlInputFile = "stdin"
+(opt, filenames) = p.parse_args()
 
-    def _readEventParametersFromXML(self):
-        ar = seiscomp.io.XMLArchive()
-        if self.xmlInputFile == "stdin":
-            fname = "-"
-        else:
-            fname = self.xmlInputFile
-        if ar.open(fname) == False:
-            raise IOError(self.xmlInputFile + ": unable to open")
-        obj = ar.readObject()
-        if obj is None:
-            raise TypeError(self.xmlInputFile + ": invalid format")
-        ep  = seiscomp.datamodel.EventParameters.Cast(obj)
-        if ep is None:
-            raise TypeError(self.xmlInputFile + ": no eventparameters found")
-        return ep
+if not filenames:
+    filenames = [ "-" ]
 
-    def run(self):
-        ep = self._readEventParametersFromXML()
+for filename in filenames:
+    ep = scstuff.util.readEventParametersFromXML(filename)
 
-        for i in range(ep.focalMechanismCount()):
-            fm = ep.focalMechanism(i)
-            txt = scstuff.mtutil.fm2txt(fm)
-            print(txt)
+    for i in range(ep.focalMechanismCount()):
+        fm = ep.focalMechanism(i)
+        txt = scstuff.mtutil.fm2txt(fm)
+        print(txt)
 
-        del ep
-        return True
-
-
-def main(argc, argv):
-    app = MomentTensorDumper(argc, argv)
-    app()
-
-if __name__ == "__main__":
-    argv = sys.argv
-    argc = len(argv)
-    main(argc, argv)
+    del ep
