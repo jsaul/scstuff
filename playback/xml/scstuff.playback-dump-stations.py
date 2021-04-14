@@ -1,8 +1,10 @@
 #!/usr/bin/env seiscomp-python
 
-from __future__ import print_function
 import sys
-import seiscomp.core, seiscomp.client, seiscomp.datamodel, seiscomp.logging
+import seiscomp.core
+import seiscomp.client
+import seiscomp.datamodel
+import seiscomp.logging
 
 def str2time(s):
     t = seiscomp.core.Time.GMT()

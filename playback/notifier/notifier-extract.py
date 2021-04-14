@@ -16,7 +16,8 @@
 ###########################################################################
 
 
-import sys, optparse
+import sys
+import optparse
 import seiscomp.core
 
 description="%prog - extract notifiers from log based on start and end time"

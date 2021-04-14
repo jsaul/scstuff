@@ -1,49 +1,57 @@
-#!/usr/bin/env python
 # -*- coding: utf-8 -*-
+
+def operational(obj, time):
+    """
+    Return True if the inventory item 'obj' is considered
+    operational at the specified time. False is returned otherwise.
+    """
+    # If the start time of an inventory item is not
+    # known, it is not considered operational.
+    try:
+        start = obj.start()
+        assert time >= start
+    except:
+        return False
+
+    # If the end time of an inventory item is not
+    # known it is considered "open end".
+    try:
+        end = obj.end()
+        if time > end:
+            return False
+    except:
+        pass
+
+    return True
+
 
 def InventoryIterator(inventory, time=None):
     """
-    inventory is a SC3 inventory object
+    inventory is a SeisComP inventory instance
     """
 
-    nnet = inventory.networkCount()
-    for inet in range(nnet):
+    for inet in range(inventory.networkCount()):
         network = inventory.network(inet)
-        nsta = network.stationCount()
-        for ista in range(nsta):
+        if time is not None and not operational(network, time):
+            continue
+
+        for ista in range(network.stationCount()):
             station = network.station(ista)
 
-            if time is not None:
-                # If a time is specified, only yield inventory
-                # items matching this time.
-
-                # If the start time of an inventory item is not
-                # known, this item is ignored.
-                try:
-                    start = station.start()
-                except:
-                    continue
-
-                if time < start:
-                    continue
-
-                # If the end time of an inventory item is not
-                # known it is considered "open end"
-                try:
-                    end = station.end()
-                    if time > end:
-                        continue
-                except:
-                    pass
-
-                # At this point we know that this is an operational
-                # station at the specified time
+            if time is not None and not operational(station, time):
+                continue
 
             for iloc in range(station.sensorLocationCount()):
                 location = station.sensorLocation(iloc)
 
+                if time is not None and not operational(location, time):
+                    continue
+
                 for istr in range(location.streamCount()):
                     stream = location.stream(istr)
+
+                    if time is not None and not operational(stream, time):
+                        continue
 
                     yield network, station, location, stream
 

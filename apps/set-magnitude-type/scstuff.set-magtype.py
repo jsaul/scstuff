@@ -97,7 +97,6 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
 
 
     def run(self):
-        print(self._magType)
         if self._magType is not None:
             if self._magType == "Mw":
                 return self.fixMw()
