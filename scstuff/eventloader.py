@@ -9,8 +9,9 @@
 #                                                                          #
 ############################################################################
 
-from __future__ import print_function
-import seiscomp.client, seiscomp.datamodel, seiscomp.logging
+import seiscomp.client
+import seiscomp.datamodel
+import seiscomp.logging
 import scstuff.util
 
 
@@ -30,6 +31,7 @@ class EventLoaderApp(seiscomp.client.Application):
         self.setLoggingToStdErr(True)
         self.setDaemonEnabled(False)
         self.setRecordStreamEnabled(False)
+        self._xmlFile = None
 
 
     def setXmlEnabled(self, enable=True):
@@ -37,16 +39,24 @@ class EventLoaderApp(seiscomp.client.Application):
         self._xmlEnabled = enable
 
 
+    def setXmlFile(self, filename):
+        """ To be called from __init__() """
+        self._xmlFile = filename
+        self.setXmlEnabled(True)
+
+
     def xmlEnabled(self):
         return self._xmlEnabled
 
 
+    def setEventID(self, eventID):
+        self._eventID = eventID
+
     def createCommandLineDescription(self):
-        self.commandline().addGroup("Dump")
-        self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
+        self.commandline().addGroup("Input")
+        self.commandline().addStringOption("Input", "event,E", "ID of event to dump")
 
         if self.xmlEnabled():
-            self.commandline().addGroup("Input")
             self.commandline().addStringOption("Input", "xml", "specify xml file")
         return True
 
@@ -61,7 +71,6 @@ class EventLoaderApp(seiscomp.client.Application):
         if not seiscomp.client.Application.validateParameters(self):
             return False
 
-        self._xmlFile = None
         try:
             if self.xmlEnabled():
                 self._xmlFile = self.commandline().optionString("xml")

@@ -1,7 +1,9 @@
 #!/usr/bin/env python
 
-import sys, seiscomp.client, seiscomp.core
-from sc3stuff.inventory import InventoryIterator
+import sys
+import seiscomp.client
+import seiscomp.core
+from scstuff.inventory import InventoryIterator
 
 class InvApp(seiscomp.client.Application):
     def __init__(self, argc, argv):

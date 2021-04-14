@@ -1,10 +1,11 @@
 #!/usr/bin/env seiscomp-python
 
-from __future__ import print_function
-
 import sys
-import seiscomp.core, seiscomp.client, seiscomp.datamodel
-import seiscomp.io, seiscomp.logging
+import seiscomp.core
+import seiscomp.client
+import seiscomp.datamodel
+import seiscomp.io
+import seiscomp.logging
 
 
 def parse_time_string(s):

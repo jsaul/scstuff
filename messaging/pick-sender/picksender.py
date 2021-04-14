@@ -1,6 +1,8 @@
-from __future__ import print_function
-import sys, select
-import seiscomp.core, seiscomp.client, seiscomp.datamodel
+import sys
+import select
+import seiscomp.core
+import seiscomp.client
+import seiscomp.datamodel
 
 class PickSender(seiscomp.client.Application):
 

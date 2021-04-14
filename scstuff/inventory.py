@@ -32,25 +32,25 @@ def InventoryIterator(inventory, time=None):
 
     for inet in range(inventory.networkCount()):
         network = inventory.network(inet)
-        if time is not None and not operational(time, network):
+        if time is not None and not operational(network, time):
             continue
 
         for ista in range(network.stationCount()):
             station = network.station(ista)
 
-            if time is not None and not operational(time, station):
+            if time is not None and not operational(station, time):
                 continue
 
             for iloc in range(station.sensorLocationCount()):
                 location = station.sensorLocation(iloc)
 
-                if time is not None and not operational(time, location):
+                if time is not None and not operational(location, time):
                     continue
 
                 for istr in range(location.streamCount()):
                     stream = location.stream(istr)
 
-                    if time is not None and not operational(time, stream):
+                    if time is not None and not operational(stream, time):
                         continue
 
                     yield network, station, location, stream

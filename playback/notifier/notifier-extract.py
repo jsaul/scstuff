@@ -1,8 +1,8 @@
 #!/usr/bin/env seiscomp-python
 # -*- coding: utf-8 -*-
 
-from __future__ import print_function
-import sys, optparse
+import sys
+import optparse
 import seiscomp.core
 
 description="%prog - extract notifiers from log based on start and end time"
