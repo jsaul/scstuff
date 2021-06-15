@@ -16,12 +16,14 @@ setup(
             "util.py",
             "dbutil.py",
             "mtutil.py",
+            "bulletin.py",
             "inventory",
             "eventloader.py"
         ]
     },
 
     scripts = [
+        "apps/scbulletin2.py",
         "apps/xml/scstuff.xml-dump-with-mt.py",
         "apps/xml/scstuff.xml-anonymize.py",
         "apps/xml/scstuff.xml-to-mt-txt.py",
