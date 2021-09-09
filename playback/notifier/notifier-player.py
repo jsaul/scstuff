@@ -32,7 +32,7 @@ def notifierMessageFromXML(xml):
         raise TypeError("got invalid xml")
     nmsg = seiscomp.datamodel.NotifierMessage.Cast(obj)
     if nmsg is None:
-        raise TypeError(self.xmlInputFile + ": no NotifierMessage object found")
+        raise TypeError("no NotifierMessage object found")
     return nmsg
 
 def notifierInput(filename):
