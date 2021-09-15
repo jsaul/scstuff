@@ -174,20 +174,50 @@ def fm2txt(fm):
     Mrt = tensor.Mrt().value()
     Mrp = tensor.Mrp().value()
     Mtp = tensor.Mtp().value()
-    expo = max(expo, log10(abs(Mrr)))
-    expo = max(expo, log10(abs(Mtt)))
-    expo = max(expo, log10(abs(Mpp)))
-    expo = max(expo, log10(abs(Mrt)))
-    expo = max(expo, log10(abs(Mrp)))
-    expo = max(expo, log10(abs(Mtp)))
+
+    try:
+        expo = max(expo, log10(abs(Mrr)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Mtt)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Mpp)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Mrt)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Mrp)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Mtp)))
+    except ValueError:
+        pass
 
     Tval = fm.principalAxes().tAxis().length().value()
     Nval = fm.principalAxes().nAxis().length().value()
     Pval = fm.principalAxes().pAxis().length().value()
 
-    expo = max(expo, log10(abs(Tval)))
-    expo = max(expo, log10(abs(Nval)))
-    expo = max(expo, log10(abs(Pval)))
+    # Tval and Pval can never be zero but Nval can of course.
+    # But we check them all for consistency.
+    try:
+        expo = max(expo, log10(abs(Tval)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Nval)))
+    except ValueError:
+        pass
+    try:
+        expo = max(expo, log10(abs(Pval)))
+    except ValueError:
+        pass
     expo = int(expo)
 
     Tdip = fm.principalAxes().tAxis().plunge().value()
@@ -210,7 +240,10 @@ def fm2txt(fm):
 
     lines.append("")
     moment = mt.scalarMoment().value()
-    expo = int(log10(moment))
+    try:
+        expo = int(log10(moment))
+    except ValueError:
+        pass
     moment *= 10**-expo
     np1 = fm.nodalPlanes().nodalPlane1();
     np2 = fm.nodalPlanes().nodalPlane2();
