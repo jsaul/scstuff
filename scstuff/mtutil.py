@@ -156,7 +156,14 @@ def fm2txt(fm):
         lines.append("%s MOMENT TENSOR SOLUTION" % agencyID)
 
     depth = int(derivedOrigin.depth().value()+0.5)
-    stationCount = derivedOrigin.quality().usedStationCount()
+    try:
+        stationCount = derivedOrigin.quality().usedStationCount()
+    except ValueError:
+        # for some legacy events at GFZ we have to use this fallback
+        try:
+            stationCount = derivedOrigin.magnitude(0).stationCount()
+        except ValueError:
+            stationCount = -1
     lines.append("Depth %3d  %21s" % (depth, ("No. of sta: %d" % stationCount)))
 
     expo = 0
