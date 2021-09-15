@@ -21,6 +21,7 @@ import seiscomp.client
 import seiscomp.datamodel
 import seiscomp.io
 import seiscomp.logging
+import scstuff.dbutil
 
 
 def parse_time_string(s):
@@ -130,28 +131,10 @@ class PickLoader(seiscomp.client.Application):
                         continue
                     self._orids.append(org.publicID())
 
-        picks = {}
-        for obj in dbq.getPicks(self._startTime, self._endTime):
-            pick = seiscomp.datamodel.Pick.Cast(obj)
-            if pick:
-                if pick.evaluationMode() == seiscomp.datamodel.MANUAL and self.commandline().hasOption("no-manual-picks"):
-                    continue
-                if pick.waveformID().networkCode() in self._networkBlacklist:
-                    continue
-                picks[pick.publicID()] = pick
-                ep.add(pick)
-        seiscomp.logging.debug("loaded %d picks" % ep.pickCount())
-
-        for obj in dbq.getAmplitudes(self._startTime, self._endTime):
-            ampl = seiscomp.datamodel.Amplitude.Cast(obj)
-            if ampl:
-                if not ampl.pickID():
-                    continue
-                if ampl.pickID() not in picks:
-                    continue
-                ep.add(ampl)
-        del picks
-        seiscomp.logging.debug("loaded %d amplitudes" % ep.amplitudeCount())
+        objects = scstuff.dbutil.loadPicksForTimespan(dbq, self._startTime, self._endTime, withAmplitudes=True)
+        for publicID in objects:
+            ep.add( objects[publicID] )
+        del objects
 
         if not self.commandline().hasOption("no-origins"):
             for i,orid in enumerate(self._orids):

@@ -29,6 +29,7 @@ import scstuff.mtutil
 description="%prog - dump moment tensor information from XML files to text"
 
 p = optparse.OptionParser(usage="%prog filename[s] >", description=description)
+p.add_option("-E", "--event", help="specify event ID")
 p.add_option("-v", "--verbose", action="store_true", help="run in verbose mode")
 
 (opt, filenames) = p.parse_args()
@@ -36,11 +37,38 @@ p.add_option("-v", "--verbose", action="store_true", help="run in verbose mode")
 if not filenames:
     filenames = [ "-" ]
 
+if opt.verbose:
+    if opt.event:
+        print("output limited to event", opt.event, file=sys.stderr)
+
 for filename in filenames:
+    if opt.verbose:
+        print("Working on imput file", filename, file=sys.stderr)
+
     ep = scstuff.util.readEventParametersFromXML(filename)
+
+    # Create a list of publicID's of the focal mechanisms
+    # that we are interested in.
+    focalMechanismIDs = []
+    for i in range(ep.eventCount()):
+        event = ep.event(i)
+        # If we explicitly specified an event ID, we skip
+        # all other events.
+        if opt.event and event.publicID() != opt.event:
+            continue
+        focalMechanismIDs = event.preferredFocalMechanismID()
+
+    if opt.verbose:
+        print(focalMechanismIDs, file=sys.stderr)
+
+    # We are now on the safe side that we only consider focal
+    # mechanisms that are the preferred focal mechanisms of any
+    # or even only a specific event.
 
     for i in range(ep.focalMechanismCount()):
         fm = ep.focalMechanism(i)
+        if fm.publicID() not in focalMechanismIDs:
+            continue
         txt = scstuff.mtutil.fm2txt(fm)
         print(txt)
 

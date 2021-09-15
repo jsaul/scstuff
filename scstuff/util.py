@@ -1,8 +1,26 @@
 #!/usr/bin/env python
 # -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (C) GFZ Potsdam                                               #
+# All rights reserved.                                                    #
+#                                                                         #
+# Author: Joachim Saul (saul@gfz-potsdam.de)                              #
+#                                                                         #
+# GNU Affero General Public License Usage                                 #
+# This file may be used under the terms of the GNU Affero                 #
+# Public License version 3.0 as published by the Free Software Foundation #
+# and appearing in the file LICENSE included in the packaging of this     #
+# file. Please review the following information to ensure the GNU Affero  #
+# Public License version 3.0 requirements will be met:                    #
+# https://www.gnu.org/licenses/agpl-3.0.html.                             #
+###########################################################################
 
-import seiscomp.core, seiscomp.datamodel, seiscomp.io, seiscomp.logging
+import seiscomp.core
+import seiscomp.datamodel
+import seiscomp.io
+import seiscomp.logging
 import operator
+
 
 def readEventParametersFromXML(xmlFile="-"):
     """
@@ -11,7 +29,7 @@ def readEventParametersFromXML(xmlFile="-"):
     elements.
     """
     ar = seiscomp.io.XMLArchive()
-    if ar.open(xmlFile) == False:
+    if ar.open(xmlFile) is False:
         raise IOError(xmlFile + ": unable to open")
     obj = ar.readObject()
     if obj is None:
@@ -38,11 +56,13 @@ def EventParametersEvents(ep):
         if obj:
             yield obj
 
+
 def EventParametersOrigins(ep):
     for i in range(ep.originCount()):
         obj = seiscomp.datamodel.Origin.Cast(ep.origin(i))
         if obj:
             yield obj
+
 
 def EventParametersPicks(ep):
     for i in range(ep.pickCount()):
@@ -50,11 +70,13 @@ def EventParametersPicks(ep):
         if obj:
             yield obj
 
+
 def EventParametersAmplitudes(ep):
     for i in range(ep.amplitudeCount()):
         obj = seiscomp.datamodel.Amplitude.Cast(ep.amplitude(i))
         if obj:
             yield obj
+
 
 def EventParametersFocalMechanisms(ep):
     for i in range(ep.focalMechanismCount()):
@@ -165,6 +187,7 @@ def EventParametersIterator(ep):
             yield mt
         yield fm
 
+
 def ep_get_event(ep, eventID):
 
     for evt in EventParametersEvents(ep):
@@ -178,12 +201,14 @@ def ep_get_origin(ep, eventID=None, originID=None):
         evt = ep_get_event(ep, eventID)
         if not evt:
             return
+    else:
+        evt = None
 
     for i in range(ep.originCount()):
         # FIXME: The cast hack forces the SC3 refcounter to be increased.
         org = seiscomp.datamodel.Origin.Cast(ep.origin(i))
         if originID is None:
-            if event is not None:
+            if evt is not None:
                 if org.publicID() == evt.preferredOriginID():
                     return org
         else:
@@ -374,16 +399,16 @@ def removeAuthorInfo2(obj):
             removeAuthorInfo(obj.momentTensor(k))
 
     if tobj is seiscomp.datamodel.EventParameters:
-        for i in range(ep.eventCount()):
-            removeAuthorInfo(ep.event(i))
-        for i in range(ep.originCount()):
-            removeAuthorInfo(ep.origin(i))
-        for i in range(ep.pickCount()):
-            removeAuthorInfo(ep.pick(i))
-        for i in range(ep.amplitudeCount()):
-            removeAuthorInfo(ep.amplitude(i))
-        for i in range(ep.focalMechanismCount()):
-            removeAuthorInfo(ep.focalMechanism(i))
+        for i in range(obj.eventCount()):
+            removeAuthorInfo(obj.event(i))
+        for i in range(obj.originCount()):
+            removeAuthorInfo(obj.origin(i))
+        for i in range(obj.pickCount()):
+            removeAuthorInfo(obj.pick(i))
+        for i in range(obj.amplitudeCount()):
+            removeAuthorInfo(obj.amplitude(i))
+        for i in range(obj.focalMechanismCount()):
+            removeAuthorInfo(obj.focalMechanism(i))
 
 
 def removeAuthorInfo(ep):
@@ -429,7 +454,7 @@ def sortedByCreationTime(objects):
         t = obj.creationInfo().creationTime()
         tmp.append( (t, obj) )
     tmp.sort(key=operator.itemgetter(0))
-    return [ o for (t,o) in tmp ]
+    return [ o for (t, o) in tmp ]
 
 
 def status(obj):
@@ -465,4 +490,3 @@ def manualPickCount(origin, minWeight=0.5):
             continue
         count += 1
     return count
-

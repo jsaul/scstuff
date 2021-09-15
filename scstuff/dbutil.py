@@ -237,3 +237,32 @@ def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitude
         scstuff.util.recursivelyRemoveComments(ep)
 
     return ep
+
+
+def loadPicksForTimespan(query, startTime, endTime, withAmplitudes=False):
+    """
+    Load from the database all picks within the given time span. If specified,
+    also all amplitudes that reference any of these picks may be returned.
+    """
+
+    objects = {}
+    for obj in query.getPicks(startTime, endTime):
+        pick = seiscomp.datamodel.Pick.Cast(obj)
+        if pick:
+            objects[pick.publicID()] = pick
+    seiscomp.logging.debug("loaded %d picks" % ep.pickCount())
+
+    if not withAmplitudes:
+        return objects
+
+    for obj in query.getAmplitudes(startTime, endTime):
+        ampl = seiscomp.datamodel.Amplitude.Cast(obj)
+        if ampl:
+            if not ampl.pickID():
+                continue
+            if ampl.pickID() not in objects:
+                continue
+    seiscomp.logging.debug("loaded %d amplitudes" % ep.amplitudeCount())
+
+    return objects
+
