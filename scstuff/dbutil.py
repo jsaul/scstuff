@@ -250,7 +250,9 @@ def loadPicksForTimespan(query, startTime, endTime, withAmplitudes=False):
         pick = seiscomp.datamodel.Pick.Cast(obj)
         if pick:
             objects[pick.publicID()] = pick
-    seiscomp.logging.debug("loaded %d picks" % ep.pickCount())
+
+    pickCount = len(objects)
+    seiscomp.logging.debug("loaded %d picks" % pickCount)
 
     if not withAmplitudes:
         return objects
@@ -262,7 +264,10 @@ def loadPicksForTimespan(query, startTime, endTime, withAmplitudes=False):
                 continue
             if ampl.pickID() not in objects:
                 continue
-    seiscomp.logging.debug("loaded %d amplitudes" % ep.amplitudeCount())
+            objects[ampl.publicID()] = ampl
+
+    amplitudeCount = len(objects) - pickCount
+    seiscomp.logging.debug("loaded %d amplitudes" % amplitudeCount)
 
     return objects
 
