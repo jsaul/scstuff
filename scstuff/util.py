@@ -20,6 +20,8 @@ import seiscomp.datamodel
 import seiscomp.io
 import seiscomp.logging
 import operator
+import sys
+from math import pi
 
 
 def readEventParametersFromXML(xmlFile="-"):
@@ -29,6 +31,9 @@ def readEventParametersFromXML(xmlFile="-"):
     elements.
     """
     ar = seiscomp.io.XMLArchive()
+    if xmlFile.lower().endswith(".gz"):
+        ar.setCompression(True)
+        ar.setCompressionMethod(seiscomp.io.XMLArchive.GZIP)
     if ar.open(xmlFile) is False:
         raise IOError(xmlFile + ": unable to open")
     obj = ar.readObject()
@@ -195,6 +200,7 @@ def ep_get_event(ep, eventID):
         if publicID == eventID:
             return evt
 
+
 def ep_get_origin(ep, eventID=None, originID=None):
 
     if eventID:
@@ -250,11 +256,14 @@ def ep_get_region(ep, eventID):
             return evtdtext
 
 
-def nslc(wfid):
+def nslc(obj):
     """
     Convenience function to retrieve network, station, location and channel codes from a waveformID object and return them as tuple
     """
-    n,s,l,c = wfid.networkCode(),wfid.stationCode(),wfid.locationCode(),wfid.channelCode()
+    if isinstance(obj, seiscomp.datamodel.WaveformStreamID) or isinstance(obj, seiscomp.core.Record):
+        n,s,l,c = obj.networkCode(),obj.stationCode(),obj.locationCode(),obj.channelCode()
+    else:
+        return nslc(obj.waveformID())
     return n,s,l,c
 
 
@@ -278,7 +287,7 @@ def isotimestamp(time, digits=3):
     """
     Convert a seiscomp.core.Time to a timestamp YYYY-MM-DDTHH:MM:SS.sssZ
     """
-    return time.toString("%Y-%m-%dZ%H:%M:%S.%f000000")[:20+digits].strip(".")+"Z"
+    return time.toString("%Y-%m-%dT%H:%M:%S.%f000000")[:20+digits].strip(".")+"Z"
 
 
 def format_time(time, digits=3):
@@ -457,13 +466,19 @@ def sortedByCreationTime(objects):
     return [ o for (t, o) in tmp ]
 
 
-def status(obj):
+def statusFlag(obj):
+    """
+    If the object is 'manual', return 'M' otherwise 'A'.
+    """
     try:
         if obj.evaluationMode() == seiscomp.datamodel.MANUAL:
             return "M"
     except:
         pass
     return "A"
+
+
+status = statusFlag
 
 
 def manualPickCount(origin, minWeight=0.5):
@@ -490,3 +505,238 @@ def manualPickCount(origin, minWeight=0.5):
             continue
         count += 1
     return count
+
+
+def RecordIterator(recordstream, showprogress=False):
+        count = 0
+        # It would be desirable to not need to unpack the records.
+        # Just pass around the raw records.
+        inp = seiscomp.io.RecordInput(
+                    recordstream,
+                    seiscomp.core.Array.INT,
+                    seiscomp.core.Record.SAVE_RAW)
+        while True:
+            try:
+                rec = inp.next()
+            except Exception as exc:
+                seiscomp.logging.error(str(exc))
+                rec = None
+
+            if not rec:
+                break
+            if showprogress:
+                count += 1
+                sys.stderr.write("%-20s %6d\r" % (rec.streamID(), count))
+            yield rec
+
+
+pz_header_template = """* **********************************
+* NETWORK   (KNETWK): %(net)s
+* STATION    (KSTNM): %(sta)s
+* LOCATION   (KHOLE): %(loc)s
+* CHANNEL   (KCMPNM): %(cha)s
+* CREATED           : %(creation_date)s
+* START             : %(start_date)s
+* END               : %(end_date)s
+* DESCRIPTION       : %(description)s
+* LATITUDE          : %(lat).6f
+* LONGITUDE         : %(lon).6f
+* ELEVATION         : %(ele).1f
+* DEPTH             : %(depth).1f
+* DIP               : %(dip).1f
+* DIP (SEED)        : %(dip_seed).1f
+* AZIMUTH           : %(azimuth).1f
+* SAMPLE RATE       : %(fsamp).1g
+* INPUT UNIT        : %(input_unit)s
+* OUTPUT UNIT       : %(output_unit)s
+* INSTTYPE          : %(sensor_type)s
+* INSTGAIN          : %(inst_gain).6e (%(inst_gain_unit)s)
+* INSTGAIN FREQ     : %(sensitivity_frequency)g
+* SENSITIVITY       : %(sensitivity_value).6e (%(sensitivity_unit)s)
+* SENSITIVITY FREQ  : %(sensitivity_frequency)g
+* A0                : %(a0).6e
+* **********************************
+"""
+
+valid_units = { "M":0, "M/S":1, "M/S**2":2 }
+
+
+def rectifyUnit(unit):
+    unit = unit.upper()
+    # for accelerometers several unit strings have been
+    # seen in the wild. We don't want to support them all.
+    if unit in [ "M/S/S", "M/S^2" ]:
+        unit = "M/S**2"
+    try:
+        if unit not in valid_units:
+            seiscomp.logging.error("XXXX "+ unit)
+    except:
+        print(unit)
+        raise
+    return unit
+
+
+def sacpz(network, station, location, stream):
+    net = network.code()
+    sta = station.code()
+    loc = location.code()
+    cha = stream.code()
+    if loc.strip() == "":
+        loc = "--"
+
+    if configured and (net, sta, loc, cha[:2]) not in configured:
+        return
+
+    pz = {
+        "net": net,
+        "sta": sta,
+        "loc": loc,
+        "cha": cha,
+        "lat": location.latitude(),
+        "lon": location.longitude(),
+        "ele": location.elevation(),
+        "creation_date" : now.toString("%FT%TZ")
+    }
+
+    item = "%s.%s.%s.%s" % (net,sta,loc,cha)
+    sensor = seiscomp.datamodel.Sensor.Find(stream.sensor())
+    if not sensor:
+        seiscomp.logging.warning("no sensor for   " + item)
+        return
+    response = seiscomp.datamodel.PublicObject.Find(sensor.response())
+    if not response:
+        seiscomp.logging.warning("no response for " + item)
+        return
+
+    paz = seiscomp.datamodel.ResponsePAZ.Cast(response)
+    if not paz:
+        seiscomp.logging.warning("no paz for      " + item)
+        return
+
+    try:
+        norm  = paz.normalizationFactor()
+        poles = paz.poles().content()
+        zeros = paz.zeros().content()
+    except ValueError:
+        seiscomp.logging.warning("bad paz for     " + item)
+        return
+    if paz.type() == "A":
+        f = 1
+    elif paz.type() == "B":
+        f = 2*pi
+        n = len(poles)-len(zeros)
+        norm *= f**n
+    else:
+        seiscomp.logging.error("unknown paz type for " + item)
+        return
+    pz["inst_gain"] = paz.gain()
+#   pz["inst_gain_unit"] = "inst_gain_unit unknown"
+    pz["inst_gain_frequency"] = paz.gainFrequency()
+    poles = [ f*poles[i] for i in range(len(poles)) ]
+    zeros = [ f*zeros[i] for i in range(len(zeros)) ]
+    input_unit = rectifyUnit(sensor.unit().upper())
+    if input_unit == "M/S":
+        # if input unit is velocity, we need to convert it to
+        # displacement as this is implied in the SAC PAZ format.
+        zeros.append(0)
+        input_unit = "M"
+    pz["input_unit"] = input_unit
+    pz["a0"] = norm
+    try:
+        pz["start_date"] = stream.start().toString("%FT%TZ")
+    except:
+        pass
+
+    try:
+        pz["end_date"] = stream.end().toString("%FT%TZ")
+    except:
+        pass
+
+
+    try:
+        pz["description"] = station.description()
+        # or station.description()
+    except:
+        pass
+
+    try:
+        pz["depth"] = stream.depth()
+    except:
+        pass
+
+    try:
+        # SAC and SEED unfortunately use different
+        # conventions for dip. We support both, also
+        # to make this fact clear to the unsuspecting
+        # user.
+        pz["dip"]      = stream.dip() + 90
+        pz["dip_seed"] = stream.dip()
+    except:
+        pass
+
+# The dip of the instrument in degrees, down from horizontal.
+# The azimuth and the dip describe the direction of the sensitive axis of the instrument (if applicable). Motion
+# in the same direction as this axis is positive. SEED provides this field for non-traditional instruments or for
+#traditional instruments that have been oriented in some non-traditional way. Here are traditional orientations:
+# Z — Dip -90, Azimuth 0 (Reversed: Dip 90, Azimuth 0)
+# N — Dip 0, Azimuth 0 (Reversed: Dip 0, Azimuth 180)
+# E — Dip 0, Azimuth 90 (Reversed: Dip 0, Azimuth 270)
+
+
+
+    try:
+        pz["azimuth"] = stream.azimuth()
+    except:
+        pass
+
+    try:
+        n = stream.sampleRateNumerator()
+        d = stream.sampleRateDenominator()
+        pz["fsamp"] = n/d
+    except:
+        pass
+
+    try:
+        pz["sensitivity_value"] = stream.gain()
+        pz["sensitivity_unit"] = rectifyUnit(stream.gainUnit().upper())
+        pz["sensitivity_frequency"] = stream.gainFrequency()
+    except:
+        pass
+
+    pz["output_unit"] = "COUNTS"
+
+    try:
+        # pz["sensor_type"] = sensor.type()
+        pz["sensor_type"] = sensor.description()
+    except:
+        pass
+
+    try:
+        pz["sensor_gain"] = sensor.gain()
+    except:
+        pass
+
+    lines = []
+    for line in pz_header_template.split("\n"):
+        try:
+            line = line % pz
+        except:
+            return
+        lines.append(line)
+
+    s = "\n".join(lines)
+
+    s += "ZEROS\t%d\n" % len(zeros)
+    for zero in sorted(zeros, key=abs):
+        s += "\t%+.6e\t%+.6e\n" % (zero.real, zero.imag)
+    s += "POLES\t%d\n" % len(poles)
+    for pole in sorted(poles, key=abs):
+        s += "\t%+.6e\t%+.6e\n" % (pole.real, pole.imag)
+    s += "CONSTANT %.6e\n" % (pz["a0"]*pz["sensitivity_value"])
+
+    return s
+
+
+def ArrivalIterator(origin):
+    for i in range(origin.arrivalCount()):
+        yield origin.arrival(i)

@@ -286,6 +286,9 @@ def loadPicksForTimespan(
 
             if ampl.pickID() not in objects:
                 continue
+
+            objects[ampl.publicID()] = ampl
+
     amplitudeCount = len(objects) - pickCount
     seiscomp.logging.debug("loaded %d amplitudes" % amplitudeCount)
     seiscomp.logging.debug("loaded %d objects in total" % totalObjectCount)
