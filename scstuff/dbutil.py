@@ -239,30 +239,55 @@ def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitude
     return ep
 
 
-def loadPicksForTimespan(query, startTime, endTime, withAmplitudes=False):
+def loadPicksForTimespan(
+        query, startTime, endTime,
+        withAmplitudes=False,
+        authors=None):
+
     """
     Load from the database all picks within the given time span. If specified,
     also all amplitudes that reference any of these picks may be returned.
     """
 
+    seiscomp.logging.debug("using author whitelist: "+str(authors))
     objects = {}
+
+    # count objects before filtering
+    totalObjectCount = 0
+
     for obj in query.getPicks(startTime, endTime):
+        totalObjectCount += 1
         pick = seiscomp.datamodel.Pick.Cast(obj)
         if pick:
+            if authors:
+                try:
+                    author = pick.creationInfo().author()
+                except ValueError:
+                    # ignore pick without author
+                    continue
+                if author not in authors:
+                    continue
             objects[pick.publicID()] = pick
-    seiscomp.logging.debug("loaded %d picks" % ep.pickCount())
+
+    pickCount = len(objects)
+    seiscomp.logging.debug("loaded %d picks" % pickCount)
+    seiscomp.logging.debug("loaded %d objects in total" % totalObjectCount)
 
     if not withAmplitudes:
         return objects
-
+        
     for obj in query.getAmplitudes(startTime, endTime):
+        totalObjectCount += 1
         ampl = seiscomp.datamodel.Amplitude.Cast(obj)
         if ampl:
             if not ampl.pickID():
                 continue
+            # we don't do any author check here
+
             if ampl.pickID() not in objects:
                 continue
-    seiscomp.logging.debug("loaded %d amplitudes" % ep.amplitudeCount())
+    amplitudeCount = len(objects) - pickCount
+    seiscomp.logging.debug("loaded %d amplitudes" % amplitudeCount)
+    seiscomp.logging.debug("loaded %d objects in total" % totalObjectCount)
 
     return objects
-
