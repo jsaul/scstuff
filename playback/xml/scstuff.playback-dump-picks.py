@@ -51,8 +51,12 @@ class PickLoader(seiscomp.client.Application):
         self.commandline().addStringOption("Dump", "event", "compute a time window from the event")
         self.commandline().addStringOption("Dump", "before", "start time window this many seconds before origin time")
         self.commandline().addStringOption("Dump", "after",  "end time window this many seconds after origin time")
-        self.commandline().addStringOption("Dump", "origins", "specify space separated list of origin ids to be also loaded")
-        self.commandline().addStringOption("Dump", "network-blacklist", "specify space separated list of network codes to be excluded")
+        self.commandline().addStringOption("Dump", "origins",
+            "specify space separated list of origin ids to be also loaded")
+        self.commandline().addStringOption("Dump", "network-blacklist",
+            "specify space separated list of network codes to be excluded")
+        self.commandline().addStringOption("Dump", "author-whitelist",
+            "specify space separated list of author IDs to be included. If not given, no author filtering is applied")
         self.commandline().addOption("Dump", "no-origins", "don't include any origins")
         self.commandline().addOption("Dump", "no-manual-picks", "don't include any manual picks")
 
@@ -96,6 +100,11 @@ class PickLoader(seiscomp.client.Application):
         except:
             self._networkBlacklist = []
 
+        try:
+            self._authorWhitelist = self.commandline().optionString("author-whitelist").split()
+        except:
+            self._authorWhitelist = None
+
         return True
 
     def run(self):
@@ -120,7 +129,6 @@ class PickLoader(seiscomp.client.Application):
                 t0 = org.time().value()
                 self._startTime = t0 + seiscomp.core.TimeSpan(-self._before)
                 self._endTime   = t0 + seiscomp.core.TimeSpan( self._after)
-#               print("time window: %s ... %s" % (self._startTime, self._endTime), file=sys.stderr)
 
             if not self.commandline().hasOption("no-origins"):
                 # Loop over all origins of the event
@@ -131,10 +139,18 @@ class PickLoader(seiscomp.client.Application):
                         continue
                     self._orids.append(org.publicID())
 
-        objects = scstuff.dbutil.loadPicksForTimespan(dbq, self._startTime, self._endTime, withAmplitudes=True)
+        seiscomp.logging.debug("querying database")
+        objects = scstuff.dbutil.loadPicksForTimespan(
+                dbq,
+                self._startTime, self._endTime,
+                withAmplitudes=True, authors=self._authorWhitelist)
+
+        seiscomp.logging.debug("adding %d objects to EventParameters " % len(objects))
         for publicID in objects:
-            ep.add( objects[publicID] )
+            ep.add(objects[publicID])
+        seiscomp.logging.debug("deleting %d objects" % len(objects))
         del objects
+        seiscomp.logging.debug("finished deleting objects")
 
         if not self.commandline().hasOption("no-origins"):
             for i,orid in enumerate(self._orids):
@@ -150,13 +166,16 @@ class PickLoader(seiscomp.client.Application):
                 ep.add(org)
             seiscomp.logging.debug("loaded %d manual origins" % ep.originCount())
 
+        seiscomp.logging.debug("dumping EventParameters to XMLArchive")
         # finally dump event parameters as formatted XML archive to stdout
         ar = seiscomp.io.XMLArchive()
         ar.setFormattedOutput(True)
         ar.create("-")
         ar.writeObject(ep)
         ar.close()
+        seiscomp.logging.debug("deleting EventParameters")
         del ep
+        seiscomp.logging.debug("done")
         return True
 
 
