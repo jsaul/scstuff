@@ -1,4 +1,23 @@
 # -*- coding: utf-8 -*-
+###########################################################################
+# Copyright (C) GFZ Potsdam                                               #
+# All rights reserved.                                                    #
+#                                                                         #
+# Author: Joachim Saul (saul@gfz-potsdam.de)                              #
+#                                                                         #
+# GNU Affero General Public License Usage                                 #
+# This file may be used under the terms of the GNU Affero                 #
+# Public License version 3.0 as published by the Free Software Foundation #
+# and appearing in the file LICENSE included in the packaging of this     #
+# file. Please review the following information to ensure the GNU Affero  #
+# Public License version 3.0 requirements will be met:                    #
+# https://www.gnu.org/licenses/agpl-3.0.html.                             #
+###########################################################################
+
+
+import seiscomp.datamodel
+import seiscomp.io
+
 
 def operational(obj, time):
     """
@@ -27,7 +46,9 @@ def operational(obj, time):
 
 def InventoryIterator(inventory, time=None):
     """
-    inventory is a SeisComP inventory instance
+    inventory is a SeisComP inventory instance. Note that this needs
+    to be an inventory incl. the streams. Otherwise this iterator
+    makes no sense.
     """
 
     for inet in range(inventory.networkCount()):
@@ -55,3 +76,70 @@ def InventoryIterator(inventory, time=None):
 
                     yield network, station, location, stream
 
+
+def inventoryFromStationLocationFile(filename):
+    """
+    Read a simple station location inventory from file as SeisComP
+    inventory instance.
+
+    The file must consist of lines with 5 columns:
+        network code
+        station code
+        latitude
+        longitude
+        elevation in meters
+
+    This routine returns a SeisComP inventory instance which is
+    sufficient to run scautoloc.
+    """
+
+    inventory = seiscomp.datamodel.Inventory()
+
+    with open(filename) as f:
+        while True:
+            line = f.readline()
+            if line:
+                line.strip()
+            if not line:
+                break
+
+            net, sta, lat, lon, alt = line.split()
+            lat, lon, alt = float(lat), float(lon), float(alt)
+
+            netID = "Network/"+net;
+            network = inventory.findNetwork(netID)
+            if not network:
+                network = seiscomp.datamodel.Network(netID)
+                network.setCode(net)
+                inventory.add(network)
+
+            staID = "Station/"+net+"/"+sta;
+            station = seiscomp.datamodel.Station(staID)
+            station.setCode(sta)
+            station.setLatitude(lat)
+            station.setLongitude(lon)
+            station.setElevation(alt)
+            network.add(station)
+
+    return inventory
+
+
+
+def readInventoryFromXML(xmlFile="-"):
+    """
+    Reads an Inventory root element from a (possibly gzipped)
+    SeisComP XML file.
+    """
+    ar = seiscomp.io.XMLArchive()
+    if xmlFile.lower().endswith(".gz"):
+        ar.setCompression(True)
+        ar.setCompressionMethod(seiscomp.io.XMLArchive.GZIP)
+    if ar.open(xmlFile) is False:
+        raise IOError(xmlFile + ": unable to open")
+    obj = ar.readObject()
+    if obj is None:
+        raise TypeError(xmlFile + ": invalid format")
+    inv = seiscomp.datamodel.Inventory.Cast(obj)
+    if inv is None:
+        raise TypeError(xmlFile + ": no inventory found")
+    return inv
