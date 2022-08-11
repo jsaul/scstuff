@@ -313,7 +313,7 @@ class EventClient(Application):
 
         tmp = PublicObject.Find(oid)
         if not tmp:
-            error("PublicObject.Find failed on %s %s" % (tmp.ClassName(), oid))
+            error("PublicObject.Find failed on %s %s" % (obj.ClassName(), oid))
             return
         # can we get rid of this?
         tmp = tp.Cast(tmp)
