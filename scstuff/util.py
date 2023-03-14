@@ -26,9 +26,11 @@ from math import pi
 
 def readEventParametersFromXML(xmlFile="-"):
     """
-    Reads an EventParameters root element from a SC3 XML file. The
-    EventParameters instance holds all event parameters as child
-    elements.
+    Reads an EventParameters root element from a SC XML file.
+
+    The EventParameters instance holds all event parameters
+    contained in the XML file. In particular there can be
+    more than one event.
     """
     ar = seiscomp.io.XMLArchive()
     if xmlFile.lower().endswith(".gz"):
@@ -57,6 +59,7 @@ def writeEventParametersToXML(ep, xmlFile="-", formatted=True):
 
 def EventParametersEvents(ep):
     for i in range(ep.eventCount()):
+        # FIXME: The cast hack forces the SC refcounter to be increased.
         obj = seiscomp.datamodel.Event.Cast(ep.event(i))
         if obj:
             yield obj
@@ -64,6 +67,7 @@ def EventParametersEvents(ep):
 
 def EventParametersOrigins(ep):
     for i in range(ep.originCount()):
+        # FIXME: The cast hack forces the SC refcounter to be increased.
         obj = seiscomp.datamodel.Origin.Cast(ep.origin(i))
         if obj:
             yield obj
@@ -71,6 +75,7 @@ def EventParametersOrigins(ep):
 
 def EventParametersPicks(ep):
     for i in range(ep.pickCount()):
+        # FIXME: The cast hack forces the SC refcounter to be increased.
         obj = seiscomp.datamodel.Pick.Cast(ep.pick(i))
         if obj:
             yield obj
@@ -78,6 +83,7 @@ def EventParametersPicks(ep):
 
 def EventParametersAmplitudes(ep):
     for i in range(ep.amplitudeCount()):
+        # FIXME: The cast hack forces the SC refcounter to be increased.
         obj = seiscomp.datamodel.Amplitude.Cast(ep.amplitude(i))
         if obj:
             yield obj
@@ -85,6 +91,7 @@ def EventParametersAmplitudes(ep):
 
 def EventParametersFocalMechanisms(ep):
     for i in range(ep.focalMechanismCount()):
+        # FIXME: The cast hack forces the SC refcounter to be increased.
         obj = seiscomp.datamodel.FocalMechanism.Cast(ep.focalMechanism(i))
         if obj:
             yield obj
@@ -93,9 +100,10 @@ def EventParametersFocalMechanisms(ep):
 def extractEventParameters(ep, eventID=None, filterOrigins=False, filterPicks=False):
     """
     Extract picks, amplitudes, origins, events and focal mechanisms
-    from an EventParameters instance. 
+    from an EventParameters instance.
 
-    NOTE than the EventParameters is modified; extracted objects are removed.
+    Returns a tuple of dicts. Each dict contains the objects of the
+    given type, with their publicID used as key.
     """
     pick  = {}
     ampl  = {}
@@ -103,60 +111,43 @@ def extractEventParameters(ep, eventID=None, filterOrigins=False, filterPicks=Fa
     origin = {}
     fm = {}
 
-#   while ep.eventCount() > 0:
-#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
-#       obj = seiscomp.datamodel.Event.Cast(ep.event(0))
-#       ep.removeEvent(0)
     for obj in EventParametersEvents(ep):
         publicID = obj.publicID()
         if eventID is not None and publicID != eventID:
             continue
         event[publicID] = obj
 
-    pickIDs = []
-#   while ep.originCount() > 0:
-#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
-#       obj = seiscomp.datamodel.Origin.Cast(ep.origin(0))
-#       ep.removeOrigin(0)
     for obj in EventParametersOrigins(ep):
         publicID = obj.publicID()
         if filterOrigins:
-            # only keep origins that are preferredOrigin's of an event
+            # For each event only keep the preferredOrigin.
             for _eventID in event:
                 if publicID == event[_eventID].preferredOriginID():
                     origin[publicID] = org = obj
-                    # collect pick ID's for all associated picks
-                    for i in range(org.arrivalCount()):
-                        arr = org.arrival(i)
-                        pickIDs.append(arr.pickID())
                     break
 
         else:
             origin[publicID] = obj
 
-#   while ep.pickCount() > 0:
-#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
-#       obj = seiscomp.datamodel.Pick.Cast(ep.pick(0))
-#       ep.removePick(0)
+    # Track which picks are referenced by origins.
+    pickIDs = []
+    for publicID in origin:
+        org = origin[publicID]
+        for i in range(org.arrivalCount()):
+            arr = org.arrival(i)
+            pickIDs.append(arr.pickID())
+
     for obj in EventParametersPicks(ep):
         publicID = obj.publicID()
         if filterPicks and publicID not in pickIDs:
             continue
         pick[publicID] = obj
 
-#   while ep.amplitudeCount() > 0:
-#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
-#       obj = seiscomp.datamodel.Amplitude.Cast(ep.amplitude(0))
-#       ep.removeAmplitude(0)
     for obj in EventParametersAmplitudes(ep):
         if obj.pickID() not in pick:
             continue
         ampl[obj.publicID()] = obj
 
-#   while ep.focalMechanismCount() > 0:
-#       # FIXME: The cast hack forces the SC3 refcounter to be increased.
-#       obj = seiscomp.datamodel.FocalMechanism.Cast(ep.focalMechanism(0))
-#       ep.removeFocalMechanism(0)
     for obj in EventParametersFocalMechanisms(ep):
         fm[obj.publicID()] = obj
 
@@ -211,7 +202,7 @@ def ep_get_origin(ep, eventID=None, originID=None):
         evt = None
 
     for i in range(ep.originCount()):
-        # FIXME: The cast hack forces the SC3 refcounter to be increased.
+        # FIXME: The cast hack forces the SC refcounter to be increased.
         org = seiscomp.datamodel.Origin.Cast(ep.origin(i))
         if originID is None:
             if evt is not None:
@@ -258,13 +249,18 @@ def ep_get_region(ep, eventID):
 
 def nslc(obj):
     """
-    Convenience function to retrieve network, station, location and channel codes from a waveformID object and return them as tuple
+    Convenience function to retrieve network, station, location and
+    channel codes from a waveformID object and return them as tuple
     """
-    if isinstance(obj, seiscomp.datamodel.WaveformStreamID) or isinstance(obj, seiscomp.core.Record):
-        n,s,l,c = obj.networkCode(),obj.stationCode(),obj.locationCode(),obj.channelCode()
+    if isinstance(obj, seiscomp.datamodel.WaveformStreamID) or \
+       isinstance(obj, seiscomp.core.Record):
+        n = obj.networkCode()
+        s = obj.stationCode()
+        l = obj.locationCode()
+        c = obj.channelCode()
     else:
         return nslc(obj.waveformID())
-    return n,s,l,c
+    return n, s, l, c
 
 
 def format_nslc_spaces(wfid):
@@ -576,7 +572,7 @@ def rectifyUnit(unit):
     return unit
 
 
-def sacpz(network, station, location, stream):
+def sacpz(network, station, location, stream, configured=None):
     net = network.code()
     sta = station.code()
     loc = location.code()
@@ -586,6 +582,8 @@ def sacpz(network, station, location, stream):
 
     if configured and (net, sta, loc, cha[:2]) not in configured:
         return
+
+    now = seiscomp.core.Time.GMT()
 
     pz = {
         "net": net,
@@ -598,7 +596,7 @@ def sacpz(network, station, location, stream):
         "creation_date" : now.toString("%FT%TZ")
     }
 
-    item = "%s.%s.%s.%s" % (net,sta,loc,cha)
+    item = "%s.%s.%s.%s" % (net, sta, loc, cha)
     sensor = seiscomp.datamodel.Sensor.Find(stream.sensor())
     if not sensor:
         seiscomp.logging.warning("no sensor for   " + item)
@@ -607,19 +605,41 @@ def sacpz(network, station, location, stream):
     if not response:
         seiscomp.logging.warning("no response for " + item)
         return
-
     paz = seiscomp.datamodel.ResponsePAZ.Cast(response)
     if not paz:
         seiscomp.logging.warning("no paz for      " + item)
         return
 
     try:
-        norm  = paz.normalizationFactor()
-        poles = paz.poles().content()
-        zeros = paz.zeros().content()
+        norm = paz.normalizationFactor()
     except ValueError:
-        seiscomp.logging.warning("bad paz for     " + item)
+        seiscomp.logging.warning(
+            "ResponsePAZ.normalizationFactor missing for " + item)
+        norm = None
+
+    try:
+        if paz.numberOfPoles():
+            poles = paz.poles().content()
+        else:
+            poles = []
+    except ValueError:
+        seiscomp.logging.warning(
+            "ResponsePAZ.poles               missing for " + item)
+        poles = None
+
+    try:
+        if paz.numberOfZeros():
+            zeros = paz.zeros().content()
+        else:
+            zeros = []
+    except ValueError:
+        seiscomp.logging.warning(
+            "ResponsePAZ.zeros               missing for " + item)
+        zeros = None
+
+    if norm is None or zeros is None or poles is None:
         return
+
     if paz.type() == "A":
         f = 1
     elif paz.type() == "B":
@@ -721,7 +741,7 @@ def sacpz(network, station, location, stream):
         try:
             line = line % pz
         except:
-            return
+            continue
         lines.append(line)
 
     s = "\n".join(lines)

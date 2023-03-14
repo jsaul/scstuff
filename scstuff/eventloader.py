@@ -24,8 +24,8 @@ import scstuff.util
 class EventLoaderApp(seiscomp.client.Application):
     """
     Reads event parameters either
-      * from a SeisComP3 database (for a specific event) or
-      * from a SeisComP3 XML file (for potentially more than one event)
+      * from a SeisComP database (for a specific event) or
+      * from a SeisComP XML file (for potentially more than one event)
       
     An EventParameters instance is created to be used by derived classes.
     """
@@ -114,16 +114,33 @@ class EventLoaderApp(seiscomp.client.Application):
             seiscomp.logging.error("unknown Origin '%s'" % publicID)
         return obj
 
+    def _loadFocalMechanism(self, publicID):
+        # load a FocalMechanism object from database
+        tp = seiscomp.datamodel.FocalMechanism
+        obj = self.query().loadObject(tp.TypeInfo(), publicID)
+        obj = tp.Cast(obj)
+        if obj is None:
+            seiscomp.logging.error("unknown FocalMechanism '%s'" % publicID)
+        return obj
+
     def _readEventParametersFromXML(self):
-        # TODO: filter only items related to self._eventID if set
+        """
+        Read all event parameters from the specified XML file,
+        i.e. the entire XML content.
+        """
         ep = scstuff.util.readEventParametersFromXML(self._xmlFile)
         if ep is None:
             raise TypeError(self._xmlFile + ": no EventParameters found")
         return ep
 
     def _readEventParametersFromDatabase(self):
-        # load event and preferred origin
-        # self._eventID is required to be set
+        """
+        Read from the database for the event specified as self._eventID:
+        - event
+        - preferred origin
+        - picks
+        - amplitudes
+        """
         evt = self._loadEvent(self._eventID)
         if not evt:
             return
@@ -132,6 +149,15 @@ class EventLoaderApp(seiscomp.client.Application):
         org = self._loadOrigin(originID)
         if not org:
             return
+
+        fmID = evt.preferredFocalMechanismID()
+        fm = self._loadFocalMechanism(fmID)
+        if fm:
+            mt = fm.momentTensor(0)
+            derivedOriginID = mt.derivedOriginID()
+            derivedOrigin = self._loadOrigin(derivedOriginID)
+            mmid = mt.momentMagnitudeID()
+
 
         pick = {}
         for obj in self.query().getPicks(originID):
@@ -149,6 +175,9 @@ class EventLoaderApp(seiscomp.client.Application):
         ep = seiscomp.datamodel.EventParameters()
         ep.add(evt)
         ep.add(org)
+        if fm:
+            ep.add(fm)
+
         for key in pick:
             ep.add(pick[key])
         for key in ampl:

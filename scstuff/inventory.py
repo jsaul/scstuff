@@ -143,3 +143,32 @@ def readInventoryFromXML(xmlFile="-"):
     if inv is None:
         raise TypeError(xmlFile + ": no inventory found")
     return inv
+
+
+def threeComponents(inventory, net, sta, loc, cha, time):
+    """
+    From an Inventory instance, find the streams matching
+    net, sta, loc, cha, time. We match the stream code as the
+    first two characters of the channel code, i.e. the channel
+    code without the component code.
+
+    Matching streams are returned as a list.
+    """
+    components = []
+    streamCode = cha[0:2]
+    for item in InventoryIterator(inventory, time):
+        network, station, location, stream = item
+        if network.code() != net:
+            continue
+        if station.code() != sta:
+            continue
+        if location.code() != loc:
+            continue
+        if stream.code()[0:2] != streamCode:
+            continue
+
+        tc = seiscomp.datamodel.ThreeComponents()
+        seiscomp.datamodel.getThreeComponents(tc, location, streamCode, time)
+        return tc
+
+    return None  # not found

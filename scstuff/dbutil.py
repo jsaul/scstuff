@@ -1,15 +1,16 @@
 #!/usr/bin/env seiscomp-python
 # -*- coding: utf-8 -*-
 
-import sys
-import seiscomp.client, seiscomp.datamodel, seiscomp.io
+import seiscomp.client
+import seiscomp.datamodel
+import seiscomp.io
 import scstuff.util
 
 
 def loadEvent(query, evid):
     """
     Retrieve event from DB incl. children
-   
+
     Returns either the event instance
     or None if event could not be loaded.
 
@@ -26,10 +27,10 @@ def loadEvent(query, evid):
 def loadOrigin(query, orid, strip=False):
     """
     Retrieve origin from DB without children
-    
+
     Returns either the origin instance
     or None if origin could not be loaded.
-    """ 
+    """
 
     # Remark: An Origin can be loaded using loadObject() and
     # getObject(). The difference is that getObject() doesn't
@@ -70,9 +71,9 @@ def loadFocalMechanism(query, fmid, strip=False):
 
 
 def stripCreationInfo(obj):
-    ## strip creationInfo entirely:
-    #empty = seiscomp.datamodel.CreationInfo()
-    #obj.setCreationInfo(empty)
+    # #strip creationInfo entirely:
+    # empty = seiscomp.datamodel.CreationInfo()
+    # obj.setCreationInfo(empty)
     obj.creationInfo().setAuthor("")
 
 
@@ -84,7 +85,13 @@ def stripMomentTensor(mt):
         mt.removeMomentTensorPhaseSetting(0)
 
 
-def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitudeID=None, preferredFocalMechanismID=None, comments=False, allmagnitudes=False, withPicks=False, preferred=False):
+def loadCompleteEvent(
+        query, eventID,
+        preferredOriginID=None,
+        preferredMagnitudeID=None,
+        preferredFocalMechanismID=None,
+        comments=False, allmagnitudes=False,
+        withPicks=False, preferred=False):
     """
     Load a "complete" event from the database via the specified
     query.
@@ -121,12 +128,15 @@ def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitude
         event.setPreferredFocalMechanismID(preferredFocalMechanismID)
 
     if preferred:
-        preferredOrigin = loadOrigin(query, event.preferredOriginID(), strip=True)
+        preferredOrigin = loadOrigin(
+            query, event.preferredOriginID(), strip=True)
         origins = [ preferredOrigin ]
         if preferredOrigin is None:
-            raise ValueError("unknown origin '" + event.preferredOriginID() + "'")
+            raise ValueError(
+                "unknown origin '" + event.preferredOriginID() + "'")
     else:
-        origins = [ seiscomp.datamodel.Origin.Cast(o) for o in query.getOrigins(eventID) ]
+        origins = [ seiscomp.datamodel.Origin.Cast(o)
+                    for o in query.getOrigins(eventID) ]
 
     while (event.originReferenceCount() > 0):
         event.removeOriginReference(0)
@@ -134,7 +144,6 @@ def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitude
         event.add(seiscomp.datamodel.OriginReference(origin.publicID()))
     if comments:
         query.loadComments(preferredOrigin)
-
 
     # Load all magnitudes for all loaded origins
     magnitudes = []
@@ -155,14 +164,17 @@ def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitude
                 break
         if not preferredMagnitude:
             # try to load from memory
-            preferredMagnitude = seiscomp.datamodel.Magnitude.Find(event.preferredMagnitudeID())
+            preferredMagnitude = seiscomp.datamodel.Magnitude.Find(
+                event.preferredMagnitudeID())
         if not preferredMagnitude:
             # load it from database
-            preferredMagnitude = loadMagnitude(query, event.preferredMagnitudeID())
+            preferredMagnitude = loadMagnitude(
+                query, event.preferredMagnitudeID())
 
     # load focal mechanism, moment tensor, moment magnitude and related origins
     momentTensor = momentMagnitude = derivedOrigin = triggeringOrigin = None
-    focalMechanism = loadFocalMechanism(query, event.preferredFocalMechanismID())
+    focalMechanism = loadFocalMechanism(
+        query, event.preferredFocalMechanismID())
     if focalMechanism:
         for i in range(focalMechanism.momentTensorCount()):
             momentTensor = focalMechanism.momentTensor(i)
@@ -172,28 +184,36 @@ def loadCompleteEvent(query, eventID, preferredOriginID=None, preferredMagnitude
             if event.preferredOriginID() == focalMechanism.triggeringOriginID():
                 triggeringOrigin = preferredOrigin
             else:
-                triggeringOrigin = loadOrigin(query, focalMechanism.triggeringOriginID(), strip=True)
+                triggeringOrigin = loadOrigin(
+                    query, focalMechanism.triggeringOriginID(), strip=True)
 
         if focalMechanism.momentTensorCount() > 0:
-            momentTensor = focalMechanism.momentTensor(0) # FIXME What if there is more than one MT?
+            # FIXME What if there is more than one MT?
+            momentTensor = focalMechanism.momentTensor(0)
             if momentTensor.derivedOriginID():
-                derivedOrigin = loadOrigin(query, momentTensor.derivedOriginID(), strip=True)
+                derivedOrigin = loadOrigin(
+                    query, momentTensor.derivedOriginID(), strip=True)
             if momentTensor.momentMagnitudeID():
-                if momentTensor.momentMagnitudeID() == event.preferredMagnitudeID():
+                if momentTensor.momentMagnitudeID() == \
+                        event.preferredMagnitudeID():
                     momentMagnitude = preferredMagnitude
                 else:
-                    momentMagnitude = loadMagnitude(query, momentTensor.momentMagnitudeID())
+                    momentMagnitude = loadMagnitude(
+                        query, momentTensor.momentMagnitudeID())
 
         # take care of FocalMechanism and related references
         if derivedOrigin:
-            event.add(seiscomp.datamodel.OriginReference(derivedOrigin.publicID()))
+            event.add(seiscomp.datamodel.OriginReference(
+                derivedOrigin.publicID()))
         if triggeringOrigin:
             if event.preferredOriginID() != triggeringOrigin.publicID():
-                event.add(seiscomp.datamodel.OriginReference(triggeringOrigin.publicID()))
+                event.add(seiscomp.datamodel.OriginReference(
+                    triggeringOrigin.publicID()))
         while (event.focalMechanismReferenceCount() > 0):
             event.removeFocalMechanismReference(0)
         if focalMechanism:
-            event.add(seiscomp.datamodel.FocalMechanismReference(focalMechanism.publicID()))
+            event.add(seiscomp.datamodel.FocalMechanismReference(
+                focalMechanism.publicID()))
 
     # strip creation info
     includeFullCreationInfo = True

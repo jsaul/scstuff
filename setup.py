@@ -27,6 +27,8 @@ setup(
         "apps/xml/scstuff.xml-anonymize.py",
         "apps/xml/scstuff.xml-to-mt-txt.py",
         "apps/teleseismic-traveltimes/scstuff.ttt.py",
-        "apps/set-magnitude-type/scstuff.set-magtype.py"
+        "apps/set-magnitude-type/scstuff.set-magtype.py",
+        "apps/inv-to-sacpz/scstuff.inv-to-sacpz.py",
+        "apps/station-coordinates-to-inventory/scstuff.make-mini-inventory.py"
     ]
 )

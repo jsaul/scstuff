@@ -24,34 +24,16 @@
 #
 
 import sys
-import seiscomp.client, seiscomp.datamodel, seiscomp.io
+import seiscomp.client, seiscomp.datamodel
 import scstuff.util
 
 
 def meta(fm):
-    real_name_map = { "J. Saul":["saul"], "":["hanka", "winfried"], "A. Strollo":["strollo", "angelo"] }
-
     update = fm.creationInfo().creationTime().toString("%Y-%m-%d %H:%M:%S UTC")
-    author = fm.creationInfo().author()
-    author_real_name = None
-    for real_name in real_name_map:
-        for user in real_name_map[real_name]:
-            if author.startswith(user):
-                author_real_name = real_name
-
-    txt = ""
-    if author_real_name is not None:
-        if author_real_name == "":
-            txt = txt + "Analysis performed manually\n"
-        else:
-            txt = txt + "Analysis performed manually by "+author_real_name+"\n"
-    else:
-        if fm.evaluationMode() == seiscomp.datamodel.MANUAL:
-            txt = txt + "Analysis performed manually\n"
-        else:
-            txt = txt + "Analysis performed automatically\n"
-    txt = txt + "Last updated "+update+"\n"
-
+    txt = "Analysis performed "
+    txt = txt + "manually" if fm.evaluationMode() == seiscomp.datamodel.MANUAL else "automatically"
+    txt = txt + "\n"
+    txt = txt + "Last updated " + update + "\n"
     return txt
 
 

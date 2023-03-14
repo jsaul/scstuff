@@ -18,6 +18,7 @@ import seiscomp.client
 import scstuff.bulletin
 import scstuff.dbutil
 
+
 def usage(exitcode=0):
     usagetext = """
  scbulletin2.py [ -E event-id | -O origin-os] [--input xml-file | -d database ]
@@ -39,30 +40,41 @@ class BulletinApp(seiscomp.client.Application):
 
     def createCommandLineDescription(self):
         self.commandline().addGroup("Dump")
-        self.commandline().addStringOption("Dump", "event,E", "ID of event to dump")
-        self.commandline().addStringOption("Dump", "origin,O", "ID of origin to dump")
-        self.commandline().addStringOption("Dump", "weight,w",
-                                           "weight threshold for printed and counted picks")
-        self.commandline().addOption("Dump", "extra,x", "extra detailed autoloc3 format")
-        self.commandline().addOption("Dump", "enhanced,e",
-                                         "enhanced output precision for local earthquakes")
-        self.commandline().addOption("Dump", "polarities,p", "dump onset polarities")
-        self.commandline().addOption("Dump", "first-only",
-                                     "dump only the first event/origin")
-        self.commandline().addOption("Dump", "event-agency-id",
-                                     "use agency ID information from event instead of preferred origin")
-        self.commandline().addOption("Dump", "dist-in-km,k",
-                                     "plot distances in km instead of degree")
+        self.commandline().addStringOption(
+            "Dump", "event,E", "ID of event to dump")
+        self.commandline().addStringOption(
+            "Dump", "origin,O", "ID of origin to dump")
+        self.commandline().addStringOption(
+            "Dump", "weight,w",
+            "weight threshold for printed and counted picks")
+        self.commandline().addOption(
+            "Dump", "extra,x", "extra detailed autoloc3 format")
+        self.commandline().addOption(
+            "Dump", "enhanced,e",
+            "enhanced output precision for local earthquakes")
+        self.commandline().addOption(
+            "Dump", "polarities,p", "dump onset polarities")
+        self.commandline().addOption(
+            "Dump", "first-only",
+            "dump only the first event/origin")
+        self.commandline().addOption(
+            "Dump", "event-agency-id",
+            "use agency ID information from event instead of preferred origin")
+        self.commandline().addOption(
+            "Dump", "dist-in-km,k",
+            "plot distances in km instead of degree")
 
         self.commandline().addGroup("Input")
-        self.commandline().addStringOption("Input", "format,f",
-                                           "input format to use (xml [default], zxml (zipped xml), binary)")
-        self.commandline().addStringOption("Input", "input,i", "input file, default: stdin")
+        self.commandline().addStringOption(
+            "Input", "format,f",
+            "input format to use (xml [default], zxml (zipped xml), binary)")
+        self.commandline().addStringOption(
+            "Input", "input,i", "input file, default: stdin")
 
         return True
 
     def validateParameters(self):
-        if seiscomp.client.Application.validateParameters(self) == False:
+        if seiscomp.client.Application.validateParameters(self) is False:
             return False
 
         if self.commandline().hasOption("input"):
@@ -81,15 +93,16 @@ class BulletinApp(seiscomp.client.Application):
 
         try:
             eventID = self.commandline().optionString("event")
-        except:
+        except RuntimeError:
             eventID = None
 
         try:
             originID = self.commandline().optionString("origin")
-        except:
+        except RuntimeError:
             originID = None
 
-        if self.commandline().hasOption("input") or self.commandline().hasOption("format"):
+        if self.commandline().hasOption("input") \
+                or self.commandline().hasOption("format"):
             dbq = None
         else:
             dbq = self.query()
@@ -102,7 +115,7 @@ class BulletinApp(seiscomp.client.Application):
 
         try:
             mw = self.commandline().optionString("weight")
-        except:
+        except RuntimeError:
             mw = None
 
         if mw != "" and mw is not None:
@@ -126,10 +139,11 @@ class BulletinApp(seiscomp.client.Application):
             bulletin.distInKM = True
 
         if dbq:
-            ep = scstuff.dbutil.loadCompleteEvent(dbq, eventID, \
-                    comments=True, allmagnitudes=True, withPicks=True, preferred=True)
+            ep = scstuff.dbutil.loadCompleteEvent(
+                dbq, eventID, comments=True, allmagnitudes=True,
+                withPicks=True, preferred=True)
             bulletin.setEventParameters(ep)
-        
+
             if eventID:
                 txt = bulletin.printEvent(eventID)
             elif originID:
@@ -140,7 +154,7 @@ class BulletinApp(seiscomp.client.Application):
 
             try:
                 inputFile = self.commandline().optionString("input")
-            except:
+            except RuntimeError:
                 inputFile = "-"
 
             if inputFile.lower().endswith(".xml.gz"):
@@ -148,7 +162,7 @@ class BulletinApp(seiscomp.client.Application):
 
             try:
                 inputFormat = self.commandline().optionString("format")
-            except:
+            except RuntimeError:
                 pass
 
             if inputFormat in ("xml", "zxml", "gzxml"):
@@ -162,7 +176,7 @@ class BulletinApp(seiscomp.client.Application):
             else:
                 raise TypeError("unknown input format '" + inputFormat + "'")
 
-            if ar.open(inputFile) == False:
+            if ar.open(inputFile) is False:
                 raise IOError(inputFile + ": unable to open")
 
             obj = ar.readObject()
@@ -177,7 +191,9 @@ class BulletinApp(seiscomp.client.Application):
 
             if ep.eventCount() == 0:
                 if ep.originCount() == 0:
-                    raise TypeError(inputFile + ": no origin and no event in eventparameters found")
+                    raise TypeError(
+                        inputFile + ": "
+                        "no origin and no event in eventparameters found")
                 else:
                     if self.commandline().hasOption("first-only"):
                         org = ep.origin(0)
@@ -212,4 +228,4 @@ def main():
 
 
 if __name__ == "__main__":
-   main()
+    main()

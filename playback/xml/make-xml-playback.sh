@@ -5,6 +5,7 @@ evt="$1" comment="$2"
 ###### configuration #######
 # Give address of database
 db="mysql://sysop:sysop@geofon-proc.gfz-potsdam.de/seiscomp3"
+#db="mysql://sysop:sysop@139.17.3.198/seiscomp"
 #db="mysql://sysop:sysop@geofon-proc2.gfz-potsdam.de/seiscomp3_archive"
 #
 # comment this out in order to suppress debug output
@@ -21,7 +22,7 @@ then
     exit 1
 fi
 
-timewindow="--event $evt --before=86400 --after=86400"
+timewindow="--event $evt --before=3600 --after=7200"
 
 mkdir -p config
 for f in grid.conf station.conf
