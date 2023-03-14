@@ -523,19 +523,26 @@ class Bulletin(object):
 
         for typ in stationMagnitudes:
             for mag in stationMagnitudes[typ]:
+                amplitudeID = mag.amplitudeID()
+                if amplitudeID:
+                    amp = seiscomp.datamodel.Amplitude.Find(amplitudeID)
+                    if amp is None and self._dbq:
+                        seiscomp.logging.debug(
+                            "missing station amplitude '%s'" % amplitudeID)
 
-                key = mag.amplitudeID()
-                amp = seiscomp.datamodel.Amplitude.Find(key)
-#               if amp is None and self._dbq:
-#                   seiscomp.logging.debug(
-#                       "missing station amplitude '%s'" % key)
+                        # try to load amplitude from database
+                        obj = self._dbq.loadObject(
+                            seiscomp.datamodel.Amplitude.TypeInfo(),
+                            amplitudeID)
+                        amp = seiscomp.datamodel.Amplitude.Cast(obj)
+                else:
+                    # Station magnitude without associated amplitude.
+                    # This is expected behaviour for some magnitudes
+                    # like Me for which no amplitudes are stored.
+                    amp = None
 
-#                   # FIXME really slow!!!
-#                   obj = self._dbq.loadObject(
-#                       seiscomp.datamodel.Amplitude.TypeInfo(), key)
-#                   amp = seiscomp.datamodel.Amplitude.Cast(obj)
-
-                p = a = "N/A"
+                p = ""
+                a = "N/A"
                 if amp:
                     try:
                         a = "%g" % amp.amplitude().value()
