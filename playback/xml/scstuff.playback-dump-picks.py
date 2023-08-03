@@ -38,10 +38,31 @@ class PickLoader(seiscomp.client.Application):
         seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, False)
+        self.setLoadConfigModuleEnabled(True)
         self._startTime = self._endTime = None
         # time window relative to origin time of specified event:
         self._before = 4*3600. # 4 hours
         self._after  = 1*3600. # 1 hour
+
+    ###########################################################################
+    def initConfiguration(self):
+        if not seiscomp.client.Application.initConfiguration(self):
+            return False
+
+        # If the database connection is passed via command line or configuration
+        # file then messaging is disabled. Messaging is only used to get
+        # the configured database connection URI.
+        seiscomp.logging.warning(self.databaseURI())
+        if self.databaseURI() != '':
+            self.setMessagingEnabled(False)
+        else:
+            # A database connection is not required if the inventory is loaded
+            # from file
+            if not self.isInventoryDatabaseEnabled():
+                self.setMessagingEnabled(False)
+                self.setDatabaseEnabled(False, False)
+
+        return True
 
     def createCommandLineDescription(self):
         seiscomp.client.Application.createCommandLineDescription(self)

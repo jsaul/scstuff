@@ -3,10 +3,9 @@
 evt="$1" comment="$2"
 
 ###### configuration #######
-# Give address of database
-db="mysql://sysop:sysop@geofon-proc.gfz-potsdam.de/seiscomp3"
-#db="mysql://sysop:sysop@139.17.3.198/seiscomp"
-#db="mysql://sysop:sysop@geofon-proc2.gfz-potsdam.de/seiscomp3_archive"
+# Specify database in $HOME/.seiscomp/global.cfg, e.g. as
+#
+#   database = mysql://sysop:sysop@localhost/seiscomp
 #
 # comment this out in order to suppress debug output
 debug=--debug
@@ -14,6 +13,7 @@ debug=--debug
 # specify playback target directory (where the playback data
 # shall be written to)
 playback_d=$HOME/.seiscomp/playbacks
+#
 ############################
 
 if test -z "$evt"
@@ -32,16 +32,16 @@ done
 
 mkdir -p "$playback_d/$evt"
 ~/seiscomp/bin/seiscomp exec seiscomp-python \
-    scstuff.playback-dump-picks.py $timewindow $debug -d "$db" \
+    scstuff.playback-dump-picks.py $timewindow $debug \
     > "$playback_d/$evt"/objects.xml
 
 test -z "$comment" || echo "$evt  $comment" \
     > "$playback_d/$evt"/comment.txt
 
 ~/seiscomp/bin/seiscomp exec seiscomp-python \
-    scstuff.playback-dump-stations.py $debug -d "$db" \
+    scstuff.playback-dump-stations.py $debug \
     > "$playback_d/$evt"/station-locations.txt
 
 ~/seiscomp/bin/seiscomp exec \
-    scbulletin $debug -3 -d "$db" -E "$evt" \
+    scbulletin $debug -3 -E "$evt" \
     > "$playback_d/$evt"/bulletin
