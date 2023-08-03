@@ -563,12 +563,8 @@ def rectifyUnit(unit):
     # seen in the wild. We don't want to support them all.
     if unit in [ "M/S/S", "M/S^2" ]:
         unit = "M/S**2"
-    try:
-        if unit not in valid_units:
-            seiscomp.logging.error("XXXX "+ unit)
-    except:
-        print(unit)
-        raise
+    if unit not in valid_units:
+        raise ValueError("Invalid ground motion unit"+unit)
     return unit
 
 
