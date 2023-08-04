@@ -98,10 +98,16 @@ def inventoryFromStationLocationFile(filename):
     with open(filename) as f:
         while True:
             line = f.readline()
-            if line:
-                line.strip()
             if not line:
+                # EOF
                 break
+            line = line.strip()
+            if not line:
+                # empty line
+                continue
+            if line[0] == "#":
+                # comment line
+                continue
 
             net, sta, lat, lon, alt = line.split()
             lat, lon, alt = float(lat), float(lon), float(alt)
