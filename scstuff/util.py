@@ -756,3 +756,40 @@ def sacpz(network, station, location, stream, configured=None):
 def ArrivalIterator(origin):
     for i in range(origin.arrivalCount()):
         yield origin.arrival(i)
+
+
+def configuredStreams(configModule, setupName):
+    """
+    Get the configured streams from the specified config module.
+
+    Returns a list of n,s,l,c tuples, where c is the two-letter stream code,
+    i.e. SEED channel code without component code (e.g. "BH" for "BHZ").
+    """
+    items = []
+    for i in range(configModule.configStationCount()):
+        cfg = configModule.configStation(i)
+        setup = seiscomp.datamodel.findSetup(cfg, setupName, True)
+        if not setup: continue
+
+        params = seiscomp.datamodel.ParameterSet.Find(setup.parameterSetID())
+        if not params: continue
+
+        detecStream = None
+        detecLocid = ""
+
+        for k in range(params.parameterCount()):
+            param = params.parameter(k)
+            if param.name() == "detecStream":
+                detecStream = param.value()
+            elif param.name() == "detecLocid":
+                detecLocid = param.value()
+        if detecLocid == "":
+            detecLocid = "--"
+        if not detecStream:
+            continue
+
+        item = (cfg.networkCode(), cfg.stationCode(), detecLocid, detecStream)
+        items.append(item)
+
+    return items
+

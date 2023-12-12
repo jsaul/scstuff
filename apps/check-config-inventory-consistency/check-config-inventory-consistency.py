@@ -19,28 +19,49 @@ import sys
 import seiscomp.client
 import seiscomp.core
 import seiscomp.datamodel
+from scstuff.inventory import InventoryIterator
 from scstuff.util import configuredStreams
 
 
-class InvApp(seiscomp.client.Application):
+class App(seiscomp.client.Application):
     def __init__(self, argc, argv):
         seiscomp.client.Application.__init__(self, argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
-#       self.setLoadInventoryEnabled(True)
+        self.setLoadInventoryEnabled(True)
         self.setLoadConfigModuleEnabled(True)
 
     def run(self):
-        streams = configuredStreams(self.configModule(), self.name())
-        lines = ["%s %s %s %s" % nslc for nslc in streams]
+        now = seiscomp.core.Time.GMT()
+
+        inv = seiscomp.client.Inventory.Instance().inventory()
+        inv_streams = []
+        for network, station, location, stream in InventoryIterator(inv, now):
+            n, s, l, c = network.code(), station.code(), location.code(), stream.code()
+            if l=="":
+                l = "--"
+            c = c[:2]
+            nslc = n, s, l, c
+            if nslc not in inv_streams:
+                inv_streams.append(nslc)
+
+        cfg_streams = configuredStreams(self.configModule(), self.name())
+
+        lines = []
+        for nslc in cfg_streams:
+            if nslc not in inv_streams:
+                line = "configured stream %-2s %-5s %-2s %-2s not found in inventory" % nslc
+                lines.append(line)
+                print("%s %s %s %s" % nslc, "not found in inventory")
         for line in sorted(lines):
             print(line)
+
         return True
 
 
 def main(argc, argv):
-    app = InvApp(argc, argv)
+    app = App(argc, argv)
     app()
 
 
