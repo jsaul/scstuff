@@ -53,7 +53,6 @@ class App(seiscomp.client.Application):
             if nslc not in inv_streams:
                 line = "configured stream %-2s %-5s %-2s %-2s not found in inventory" % nslc
                 lines.append(line)
-                print("%s %s %s %s" % nslc, "not found in inventory")
         for line in sorted(lines):
             print(line)
 
