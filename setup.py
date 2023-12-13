@@ -29,6 +29,7 @@ setup(
         "apps/teleseismic-traveltimes/scstuff.ttt.py",
         "apps/set-magnitude-type/scstuff.set-magtype.py",
         "apps/inv-to-sacpz/scstuff.inv-to-sacpz.py",
-        "apps/station-coordinates-to-inventory/scstuff.make-mini-inventory.py"
+        "apps/station-coordinates-to-inventory/scstuff.make-mini-inventory.py",
+        "playback/xml/scstuff.playback-dump-picks.py"
     ]
 )
