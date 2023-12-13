@@ -127,6 +127,8 @@ def loadCompleteEvent(
     if preferredFocalMechanismID:
         event.setPreferredFocalMechanismID(preferredFocalMechanismID)
 
+    preferredOrigin = None
+
     if preferred:
         preferredOrigin = loadOrigin(
             query, event.preferredOriginID(), strip=True)
@@ -137,13 +139,32 @@ def loadCompleteEvent(
     else:
         origins = [ seiscomp.datamodel.Origin.Cast(o)
                     for o in query.getOrigins(eventID) ]
+    if withPicks:
+        for origin in origins:
+            query.loadArrivals(origin)
+    if comments:
+        for origin in origins:
+            query.loadComments(origin)
+
+    if event.preferredOriginID():
+        preferredOriginID = event.preferredOriginID()
+    else:
+        preferredOriginID = None
+
+    if preferredOrigin is None:
+        if preferredOriginID:
+            for origin in origins:
+                if origin.publicID() == preferredOriginID:
+                    preferredOrigin = origin
+                    break
+        if preferredOrigin is None:
+            raise RuntimeError(
+                "preferred origin '" + preferredOriginID + "' not found")
 
     while (event.originReferenceCount() > 0):
         event.removeOriginReference(0)
     for origin in origins:
         event.add(seiscomp.datamodel.OriginReference(origin.publicID()))
-    if comments:
-        query.loadComments(preferredOrigin)
 
     # Load all magnitudes for all loaded origins
     magnitudes = []
@@ -234,9 +255,13 @@ def loadCompleteEvent(
     if withPicks:
         for origin in origins:
             for pick in query.getPicks(origin.publicID()):
-                picks.append(pick)
+                pick = seiscomp.datamodel.Pick.Cast(pick)
+                if pick not in picks:
+                    picks.append(pick)
             for ampl in query.getAmplitudesForOrigin(origin.publicID()):
-                ampls.append(ampl)
+                ampl = seiscomp.datamodel.Amplitude.Cast(ampl)
+                if ampl not in ampls:
+                    ampls.append(ampl)
 
     # populate EventParameters instance
     ep.add(event)
@@ -252,6 +277,11 @@ def loadCompleteEvent(
                 derivedOrigin.add(momentMagnitude)
             ep.add(derivedOrigin)
         ep.add(focalMechanism)
+
+    for pick in picks:
+        ep.add(pick)
+    for ampl in ampls:
+        ep.add(ampl)
 
     if not comments:
         scstuff.util.recursivelyRemoveComments(ep)
