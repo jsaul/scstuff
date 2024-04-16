@@ -15,28 +15,30 @@
 # https://www.gnu.org/licenses/agpl-3.0.html.                             #
 ###########################################################################
 
-import sys, socket
-import seiscomp.core, seiscomp.datamodel, seiscomp.client, seiscomp.logging
+import sys
+import socket
+import seiscomp.core
+import seiscomp.datamodel
+import seiscomp.client
+import seiscomp.logging
 
 
 class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
         seiscomp.client.Application.__init__(self, argc, argv)
-        self.setDatabaseEnabled(False,False)
+        self.setDatabaseEnabled(False, False)
         self.setMessagingEnabled(True)
 
-
     def createCommandLineDescription(self):
-        self.commandline().addGroup("Config");
-        self.commandline().addStringOption("Config", "author", "Set the author name");
-        self.commandline().addStringOption("Config", "time",   "Set the publication time");
+        self.commandline().addGroup("Config")
+        self.commandline().addStringOption("Config", "author", "Set the author name")
+        self.commandline().addStringOption("Config", "time",   "Set the publication time")
         self.commandline().addGroup("Event")
         self.commandline().addStringOption("Event", "event,E", "specify event publicID")
         self.commandline().addGroup("Magnitude")
         self.commandline().addStringOption("Magnitude", "magnitude-type,Y", "type of magnitude to set preferred")
         return seiscomp.client.Application.createCommandLineDescription(self)
-
 
     def validateParameters(self):
         if not seiscomp.client.Application.validateParameters(self):
@@ -44,32 +46,37 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
 
         try:
             self._eventID = self.commandline().optionString("event")
-        except:
+        except RuntimeError:
+            seiscomp.logging.error("Missing command line parameter '--event'")
             return False
+
         try:
             self._magType = self.commandline().optionString("magnitude-type")
-        except:
+        except RuntimeError:
             self._magType = None
+
         return True
 
-    def sendJournal(self, action, params):
+    def sendEventJournal(self, eventID, action, params):
         time = seiscomp.core.Time.GMT()
+        # override system time if specified on the command line
         try:
             tstr = self.commandline().optionString("time")
-        except:
+        except RuntimeError:
             tstr = None
         if tstr and not time.fromString(tstr, "%FT%T.%fZ"):
             err = "failed to parse time string '%s'" % tstr
             seiscomp.logging.error(err)
             return False
+
         try:
             author = self.commandline().optionString("author")
-        except:
-#           author = self.author()
-            author = self.name()+"@"+socket.gethostname()
- 
+        except RuntimeError:
+            # author = self.author()
+            author = self.name() + "@" + socket.gethostname()
+
         j = seiscomp.datamodel.JournalEntry()
-        j.setObjectID(self._eventID)
+        j.setObjectID(eventID)
         j.setAction(action)
         j.setParameters(params)
         j.setSender(author)
@@ -81,25 +88,23 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
             return False
         return True
 
+    def fixMw(self, eventID):
+        seiscomp.logging.debug("Fixing magnitude type to Mw for event "+eventID)
+        return self.sendEventJournal(eventID, "EvPrefMw", "true")
 
-    def fixMw(self):
-        seiscomp.logging.debug("Fixing magnitude type to Mw for event "+self._eventID) 
-        return self.sendJournal("EvPrefMw", "true")
+    def releaseMw(self, eventID):
+        return self.sendEventJournal(eventID, "EvPrefMw", "false")
 
-    def releaseMw(self):
-        return sendJournal("EvPrefMw", "false")
+    def fixMagnitudeType(self, eventID, magtype):
+        return self.sendEventJournal(eventID, "EvPrefMagType", magtype)
 
-    def fixMagnitudeType(self, magtype):
-        return self.sendJournal("EvPrefMagType", magtype)
-
-    def releaseMagnitudeType(self):
-        return sendJournal("EvPrefMagType", "")
-
+    def releaseMagnitudeType(self, eventID):
+        return self.sendEventJournal(eventID, "EvPrefMagType", "")
 
     def run(self):
         if self._magType is not None:
             if self._magType == "Mw":
-                return self.fixMw()
+                return self.fixMw(self._eventID)
 
             if self._magType[0].upper() == "M":
                 return self.fixMagnitudeType(self._magType)
@@ -112,6 +117,7 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
 def main():
     app = PreferredMagnitudeTypeSetterApp(len(sys.argv), sys.argv)
     app()
+
 
 if __name__ == "__main__":
     main()
