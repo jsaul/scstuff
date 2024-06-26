@@ -156,7 +156,10 @@ class PickLoader(seiscomp.client.Application):
                 for org in dbq.getOrigins(self._evid):
                     org = seiscomp.datamodel.Origin.Cast(org)
                     # We only look for manual events.
-                    if org.evaluationMode() != seiscomp.datamodel.MANUAL:
+                    try:
+                        if org.evaluationMode() != seiscomp.datamodel.MANUAL:
+                            continue
+                    except:
                         continue
                     self._orids.append(org.publicID())
 
