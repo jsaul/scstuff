@@ -766,29 +766,54 @@ def configuredStreams(configModule, setupName):
     i.e. SEED channel code without component code (e.g. "BH" for "BHZ").
     """
     items = []
+
+    # loop over all configured stations
     for i in range(configModule.configStationCount()):
+        # config for one station
         cfg = configModule.configStation(i)
+
+        net, sta = cfg.networkCode(), cfg.stationCode()
+        seiscomp.logging.debug("Config  %s  %s" % (net, sta))
+
+        # client-specific setup for this station
         setup = seiscomp.datamodel.findSetup(cfg, setupName, True)
-        if not setup: continue
+        if not setup:
+            seiscomp.logging.debug("no setup found")
+            continue
 
+        # break setup down do a set of parameters
+        paramSet = setup.parameterSetID()
+        seiscomp.logging.debug("paramSet " + paramSet)
         params = seiscomp.datamodel.ParameterSet.Find(setup.parameterSetID())
-        if not params: continue
+        if not params:
+            seiscomp.logging.debug("no params found")
+            continue
 
+        # search for "detecStream" and "detecLocid"
         detecStream = None
         detecLocid = ""
 
+        # We cannot look them up by name, therefore need
+        # to check all available parameters.
         for k in range(params.parameterCount()):
             param = params.parameter(k)
+            seiscomp.logging.debug(
+                "Config  %s  %s - %s %s" % (
+                    net, sta, param.name(), param.value()))
+
             if param.name() == "detecStream":
                 detecStream = param.value()
             elif param.name() == "detecLocid":
                 detecLocid = param.value()
         if detecLocid == "":
+            # TODO: Review! Do we need to rewrite this?
             detecLocid = "--"
         if not detecStream:
+            # ignore stations without detecStream
             continue
 
         item = (cfg.networkCode(), cfg.stationCode(), detecLocid, detecStream)
+        seiscomp.logging.debug("Config  %s  %s %s" % (net, sta, str(item)))
         items.append(item)
 
     return items
