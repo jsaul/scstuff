@@ -39,21 +39,17 @@ class EventLoaderApp(seiscomp.client.Application):
         self.setRecordStreamEnabled(False)
         self._xmlFile = None
 
-
     def setXmlEnabled(self, enable=True):
         """ To be called from __init__() """
         self._xmlEnabled = enable
-
 
     def setXmlFile(self, filename):
         """ To be called from __init__() """
         self._xmlFile = filename
         self.setXmlEnabled(True)
 
-
     def xmlEnabled(self):
         return self._xmlEnabled
-
 
     def setEventID(self, eventID):
         self._eventID = eventID
@@ -65,7 +61,6 @@ class EventLoaderApp(seiscomp.client.Application):
         if self.xmlEnabled():
             self.commandline().addStringOption("Input", "xml", "specify xml file")
         return True
-
 
     def validateParameters(self):
         # This is where BOTH
@@ -94,7 +89,6 @@ class EventLoaderApp(seiscomp.client.Application):
             self.setDatabaseEnabled(True, True)
 
         return True
-
     
     def _loadEvent(self, publicID):
         # load an Event object from database
@@ -158,7 +152,6 @@ class EventLoaderApp(seiscomp.client.Application):
             derivedOrigin = self._loadOrigin(derivedOriginID)
             mmid = mt.momentMagnitudeID()
 
-
         pick = {}
         for obj in self.query().getPicks(originID):
             p = seiscomp.datamodel.Pick.Cast(obj)
@@ -185,23 +178,26 @@ class EventLoaderApp(seiscomp.client.Application):
         return ep
         # TODO: focal mechanisms for completeness
 
-
     def readEventParameters(self):
+        """
+        Read an EventParameters instance from either an XML file of from
+        the database.
+
+        If read from XML, the EventParameters is returned 'as is'-
+
+        If read from database, the EventParameters instance is formed after
+        making several queries to the database.
+
+        This is the main routine of interest in EventLoaderApp.
+        """
+        ep = None
+
         if self._xmlFile:
             ep = self._readEventParametersFromXML()
         else:
             if not self._eventID:
                 seiscomp.logging.error("need to specify an event id to read from database")
-                return False
+                return None
             ep = self._readEventParametersFromDatabase()
-        if ep:
-            return ep
-        return None
 
-
-#    def run(self):
-#        if not self._ep:
-#            self._ep = self.readEventParameters()
-#        if not self._ep:
-#            return False
-#        return True
+        return ep
