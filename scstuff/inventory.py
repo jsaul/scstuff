@@ -130,7 +130,6 @@ def inventoryFromStationLocationFile(filename):
     return inventory
 
 
-
 def readInventoryFromXML(xmlFile="-"):
     """
     Reads an Inventory root element from a (possibly gzipped)
@@ -178,3 +177,31 @@ def threeComponents(inventory, net, sta, loc, cha, time):
         return tc
 
     return None  # not found
+
+
+def streamComponents(inventory, time, net_sta_blacklist=None):
+    """
+    Returns a dict with stream id (n,s,l,c[:2]) as key, and a list
+    of component codes (c[2]) as values, valid for the specified time.
+    """
+
+    components = dict()
+
+    inv = InventoryIterator(inventory, time)
+    for network, station, location, stream in inv:
+        net = network.code()
+        sta = station.code()
+        if net_sta_blacklist and (net, sta) in net_sta_blacklist:
+            continue
+        loc = location.code()
+        cha =   stream.code()
+        if loc == "":
+            loc = "--"
+        comp = cha[2]
+        cha = cha[:2]
+        nslc = (net, sta, loc, cha)
+        if nslc not in components:
+            components[nslc] = []
+        components[nslc].append(comp)
+
+    return components
