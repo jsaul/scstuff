@@ -89,13 +89,18 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
         return True
 
     def fixMw(self, eventID):
-        seiscomp.logging.debug("Fixing magnitude type to Mw for event "+eventID)
-        return self.sendEventJournal(eventID, "EvPrefMw", "true")
+        return self.fixMagnitudeType(eventID, "Mw")
 
     def releaseMw(self, eventID):
         return self.sendEventJournal(eventID, "EvPrefMw", "false")
 
-    def fixMagnitudeType(self, eventID, magtype):
+    def fixMagnitudeType(self, eventID, magtype, release=False):
+        if magtype:
+            seiscomp.logging.debug("Fixing magnitude type to " + magtype + " for event " + eventID)
+
+        if magtype == "Mw":
+            return self.sendEventJournal(eventID, "EvPrefMw", "true")
+
         return self.sendEventJournal(eventID, "EvPrefMagType", magtype)
 
     def releaseMagnitudeType(self, eventID):
