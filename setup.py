@@ -5,7 +5,7 @@ from distutils.core import setup
 
 setup(
     name = "scstuff",
-    version = "0.2.0",
+    version = "0.5.0",
     author = "Joachim Saul",
     author_email = "saul@gfz-potsdam.de",
     packages = ['scstuff'],
@@ -18,6 +18,7 @@ setup(
             "mtutil.py",
             "bulletin.py",
             "inventory",
+            "eventclient.py",
             "eventloader.py"
         ]
     },
