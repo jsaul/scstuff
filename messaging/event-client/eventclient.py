@@ -1,4 +1,5 @@
 import sys
+import copy
 from seiscomp.core import Time, TimeSpan
 from seiscomp.client import Application
 from seiscomp.datamodel import Event, Origin, Magnitude, PublicObject, FocalMechanism
@@ -8,6 +9,10 @@ info    = seiscomp.logging.info
 debug   = seiscomp.logging.info # XXX
 warning = seiscomp.logging.warning
 error   = seiscomp.logging.error
+
+
+# TODO
+# - track changes in the event status, e.g. if an event is qualified as fake event
 
 
 # Compound event with preferred origin/magnitude on board as well as some relevant state variables
@@ -61,12 +66,12 @@ class EventClient(Application):
         # older than one hour and are not preferred anywhere.
         limit = Time.GMT() + TimeSpan(-self._cleanup_interval)
 
-        originIDs = self._origin.keys()
+        originIDs = [k for k in self._origin.keys()]
         for oid in originIDs:
             if self._origin[oid].creationInfo().creationTime() < limit:
                 del self._origin[oid]
 
-        magnitudeIDs = self._magnitude.keys()
+        magnitudeIDs = [k for k in self._magnitude.keys()]
         for oid in magnitudeIDs:
             if self._magnitude[oid] is None:
                 # This should actually never happen!
@@ -76,7 +81,7 @@ class EventClient(Application):
             if self._magnitude[oid].creationInfo().creationTime() < limit:
                 del self._magnitude[oid]
 
-        focalmechanismIDs = self._focalmechanism.keys()
+        focalmechanismIDs = [k for k in self._focalmechanism.keys()]
         for oid in focalmechanismIDs:
             if self._focalmechanism[oid].creationInfo().creationTime() < limit:
                 del self._focalmechanism[oid]
