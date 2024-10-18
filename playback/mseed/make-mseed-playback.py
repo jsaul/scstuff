@@ -110,9 +110,8 @@ class DumperApp(seiscomp.client.Application):
             netsta_streams[netsta].append( (net, sta, loc, cha) )
 
         data = []
-        netsta_keys = netsta_streams.keys()
-        netsta_keys.sort()
-        for netsta in netsta_keys:
+        netsta_keys = [key for key in netsta_streams.keys()]
+        for netsta in sorted(netsta_keys):
 
             # experts only:
             # increase in case of connection problems, normally not needed
@@ -166,6 +165,7 @@ class DumperApp(seiscomp.client.Application):
 
 
     def dump(self, eventID):
+        seiscomp.logging.debug("Working on "+eventID)
         self._dbq = self.query()
         evt = self._dbq.loadObject(seiscomp.datamodel.Event.TypeInfo(), eventID)
         evt = seiscomp.datamodel.Event.Cast(evt)
@@ -201,7 +201,7 @@ class DumperApp(seiscomp.client.Application):
             sort = False
 
         evid = self.commandline().optionString("event")
-        return self.dump(evid):
+        return self.dump(evid)
 
 
 def main():
