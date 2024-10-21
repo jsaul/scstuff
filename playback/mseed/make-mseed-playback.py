@@ -160,12 +160,12 @@ class DumperApp(seiscomp.client.Application):
                 if previous is not None and raw[6:] == previous[6:]:
                     # unfortunately duplicates do happen sometimes
                     continue
-                out.write("%s" % raw)
+                out.write(raw)
                 previous = raw
 
 
     def dump(self, eventID):
-        seiscomp.logging.debug("Working on "+eventID)
+        seiscomp.logging.debug("Working on " + eventID)
         self._dbq = self.query()
         evt = self._dbq.loadObject(seiscomp.datamodel.Event.TypeInfo(), eventID)
         evt = seiscomp.datamodel.Event.Cast(evt)
@@ -187,12 +187,12 @@ class DumperApp(seiscomp.client.Application):
             out = "%s-M%3.1f.sorted-mseed" % (eventID, val)
         else:
             out = "%s-M%3.1f.unsorted-mseed" % (eventID, val)
-        out = open(out, "w")
+        out = open(out, "wb")
 
         t0 = org.time().value()
         t1, t2 = t0 + seiscomp.core.TimeSpan(-before), t0 + seiscomp.core.TimeSpan(after)
 
-        self.get_and_write_data(t1,t2,out)
+        self.get_and_write_data(t1, t2, out)
         return True
 
 
