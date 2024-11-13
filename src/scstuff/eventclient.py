@@ -5,18 +5,23 @@ from seiscomp.client import Application
 from seiscomp.datamodel import Event, Origin, Magnitude, PublicObject, FocalMechanism
 import seiscomp.logging
 
+
+# shortcuts for the log channels
 info    = seiscomp.logging.info
-debug   = seiscomp.logging.info # XXX
+debug   = seiscomp.logging.debug
 warning = seiscomp.logging.warning
 error   = seiscomp.logging.error
 
 
 # TODO
-# - track changes in the event status, e.g. if an event is qualified as fake event
+# - track changes in the event *status*, e.g. if an event is qualified as fake event
 
 
-# Compound event with preferred origin/magnitude on board as well as some relevant state variables
 class EventState:
+    """
+    Compound event with preferred origin/magnitude/focal mechanism on board
+    as well as some relevant state variables
+    """
     __slots__ = ("event", "origin", "magnitude", "focalmechanism", "preferredOriginID", "preferredMagnitudeID", "preferredFocalMechanismID")
 
     def __init__(self, evt=None):
@@ -51,11 +56,11 @@ class EventClient(Application):
         self._xdebug = False
         self._cleanup_interval = 3600.
 
-
     def cleanup(self):
         self._cleanupCounter += 1
         if self._cleanupCounter < 5:
             return
+
         debug("before cleanup:")
         debug("   _state               %d" % len(self._state))
         debug("   _origin              %d" % len(self._origin))
@@ -106,21 +111,17 @@ class EventClient(Application):
         debug("-------------------------------")
         self._cleanupCounter = 0
 
-
     def changed_origin(self, event_id, previous_id, current_id):
         # to be implemented in a derived class
         raise NotImplementedError
-
 
     def changed_magnitude(self, event_id, previous_id, current_id):
         # to be implemented in a derived class
         raise NotImplementedError
 
-
     def changed_focalmechanism(self, event_id, previous_id, current_id):
         # to be implemented in a derived class
         raise NotImplementedError
-
 
     def _get_origin(self, oid):
         if oid not in self._origin:
@@ -128,20 +129,17 @@ class EventClient(Application):
         if oid in self._origin:
             return self._origin[oid]
 
-
     def _get_magnitude(self, oid):
         if oid not in self._magnitude:
              self._load_magnitude(oid)
         if oid in self._magnitude:
             return self._magnitude[oid]
 
-
     def _get_focalmechanism(self, oid):
         if oid not in self._focalmechanism:
              self._load_focalmechanism(oid)
         if oid in self._focalmechanism:
             return self._focalmechanism[oid]
-
 
     def _load(self, oid, tp):
         assert oid is not None
@@ -151,7 +149,6 @@ class EventClient(Application):
             debug("loaded %s %s" % (tmp.ClassName(), oid))
         return tmp
 
-
     def _load_event(self, oid):
         evt = self._load(oid, Event)
         self._state[oid] = EventState(evt)
@@ -160,14 +157,11 @@ class EventClient(Application):
         self._state[oid].magnitude = self._get_magnitude(evt.preferredMagnitudeID())
         self._state[oid].focalmechanism = self._get_focalmechanism(evt.preferredFocalMechanismID())
 
-
     def _load_origin(self, oid):
         self._origin[oid] = self._load(oid, Origin)
 
-
     def _load_magnitude(self, oid):
         self._magnitude[oid] = self._load(oid, Magnitude)
-
 
     def _load_focalmechanism(self, oid):
         obj = self._load(oid, FocalMechanism)
@@ -176,7 +170,6 @@ class EventClient(Application):
             warning("focalmechanism ID %s" % obj.publicID())
         else:
             warning("focalmechanism is None")
-
 
     def _process_event(self, evt):
         evid = evt.publicID()
@@ -204,7 +197,6 @@ class EventClient(Application):
         info("%s preferredMagnitudeID      %s  %s" % (evid, previous_preferredMagnitudeID, preferredMagnitudeID))
         info("%s preferredFocalMechanismID %s  %s" % (evid, previous_preferredFocalMechanismID, preferredFocalMechanismID))
 
-
         # Test whether there have been any (for us!) relevant
         # changes in the event. We test for preferredOriginID,
         # preferredMagnitudeID and preferredFocalMechanismID
@@ -228,26 +220,20 @@ class EventClient(Application):
         if self._xdebug:
             debug("_process_event %s end" % evid)
 
-
     def _process_origin(self, obj):
 #       self.cleanup()
         pass # currently nothing to do here
-
 
     def _process_magnitude(self, obj):
 #       self.cleanup()
         pass # currently nothing to do here
 
-
     def _process_focalmechanism(self, obj):
 #       self.cleanup()
         pass # currently nothing to do here
 
-
     def updateObject(self, parentID, updated):
-        # called if an updated object is received
         for tp in [ Magnitude, Origin, Event, FocalMechanism ]:
-            # try to convert to any of the above types
             obj = tp.Cast(updated)
             if obj:
                 break
@@ -300,9 +286,7 @@ class EventClient(Application):
         if self._xdebug:
             debug("updateObject end")
 
-
     def addObject(self, parentID, added):
-        # called if a new object is received
         for tp in [ Magnitude, Origin, Event, FocalMechanism ]:
             obj = tp.Cast(added)
             if obj:
@@ -320,7 +304,7 @@ class EventClient(Application):
         if not tmp:
             error("PublicObject.Find failed on %s %s" % (obj.ClassName(), oid))
             return
-        # can we get rid of this?
+        ## can we get rid of this?
         tmp = tp.Cast(tmp)
         tmp.assign(obj)
         obj = tmp
@@ -360,6 +344,9 @@ class EventClient(Application):
 
 
 class EventWatch(EventClient):
+    """
+    Example implementation to demonstrate the use of EventClient
+    """
 
     def __init__(self, argc, argv):
         EventClient.__init__(self, argc, argv)
@@ -448,7 +435,7 @@ class EventWatch(EventClient):
         debug("      to %s" % current_id)
         self._print(event_id)
 
+
 if __name__ == "__main__":
     app = EventWatch(len(sys.argv), sys.argv)
     sys.exit(app())
-

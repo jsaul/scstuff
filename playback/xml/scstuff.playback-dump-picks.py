@@ -143,6 +143,7 @@ class PickLoader(seiscomp.client.Application):
             if evt is None:
                 raise TypeError("unknown event '" + self._evid + "'")
             # If start time was not specified, compute it from origin time.
+            eventIDs = [ self._evid ]
             if self._startTime is None:
                 orid = evt.preferredOriginID()
                 org = dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
@@ -150,18 +151,32 @@ class PickLoader(seiscomp.client.Application):
                 t0 = org.time().value()
                 self._startTime = t0 + seiscomp.core.TimeSpan(-self._before)
                 self._endTime   = t0 + seiscomp.core.TimeSpan( self._after)
+            
+            for obj in dbq.getEvents(self._startTime, self._endTime):
+                evt = seiscomp.datamodel.Event.Cast(obj)
+                if evt.publicID() not in eventIDs:
+                    eventIDs.append(evt.publicID())
 
             if not self.commandline().hasOption("no-origins"):
-                # Loop over all origins of the event
-                for org in dbq.getOrigins(self._evid):
-                    org = seiscomp.datamodel.Origin.Cast(org)
-                    # We only look for manual events.
-                    try:
+                for eventID in sorted(eventIDs):
+                    # Loop over all origins of the event
+                    manualOriginIDs = []
+                    for org in dbq.getOrigins(eventID):
+                        org = seiscomp.datamodel.Origin.Cast(org)
+                        # We only look for manual events.
                         if org.evaluationMode() != seiscomp.datamodel.MANUAL:
                             continue
-                    except:
+                        try:
+                            org.quality().usedPhaseCount()
+                        except ValueError:
+                            continue
+                        manualOriginIDs.append(org.publicID())
+                    for originID in manualOriginIDs:
+                        if originID not in self._orids:
+                            self._orids.append(org.publicID())
+                    if not manualOriginIDs:
                         continue
-                    self._orids.append(org.publicID())
+                    seiscomp.logging.debug("event %s: %d manual origins" %(eventID, len(manualOriginIDs)))
 
         seiscomp.logging.debug("querying database")
         objects = scstuff.dbutil.loadPicksForTimespan(
@@ -187,6 +202,10 @@ class PickLoader(seiscomp.client.Application):
                 # can be avoided by creating an intermediate object 'obj'.
                 obj = dbq.loadObject(seiscomp.datamodel.Origin.TypeInfo(), orid)
                 org = seiscomp.datamodel.Origin.Cast(obj)
+                while org.stationMagnitudeCount():
+                    org.removeStationMagnitude(0)
+                while org.magnitudeCount():
+                    org.removeMagnitude(0)
                 ep.add(org)
             seiscomp.logging.debug("loaded %d manual origins" % ep.originCount())
 
