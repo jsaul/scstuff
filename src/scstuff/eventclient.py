@@ -34,7 +34,7 @@ class EventState:
         self.preferredFocalMechanismID = None
 
 
-class EventClient(Application):
+class EventClient(object):
 
     def __init__(self, argc, argv):
         Application.__init__(self, argc, argv)
@@ -304,7 +304,6 @@ class EventClient(Application):
         if not tmp:
             error("PublicObject.Find failed on %s %s" % (obj.ClassName(), oid))
             return
-        ## can we get rid of this?
         tmp = tp.Cast(tmp)
         tmp.assign(obj)
         obj = tmp
@@ -343,7 +342,7 @@ class EventClient(Application):
             debug("addObject end")
 
 
-class EventWatch(EventClient):
+class EventWatch(EventClient, Application):
     """
     Example implementation to demonstrate the use of EventClient
     """

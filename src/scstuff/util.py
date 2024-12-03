@@ -334,12 +334,14 @@ def removeComments(obj):
         for k in range(obj.stationMagnitudeCount()):
             removeComments(obj.stationMagnitude(k))
         # Note that SeisComP Arrival's have no comments
+        return
 
     if tobj is seiscomp.datamodel.FocalMechanism:
         while obj.commentCount() > 0:
             obj.removeComment(0)
         for k in range(obj.momentTensorCount()):
             removeComments(obj.momentTensor(k))
+        return
 
     if tobj is seiscomp.datamodel.EventParameters:
         for i in range(obj.eventCount()):
@@ -356,6 +358,15 @@ def removeComments(obj):
 
 def recursivelyRemoveComments(ep):
     removeComments(ep)
+
+
+def recursivelyRemoveComments2(ep):
+    for obj in EventParametersIterator:
+        removeComments(obj)
+
+
+def recursivelyRemoveAuthor(ep):
+    removeAuthorInfo(ep)
 
 
 def _removeAuthor(obj):
@@ -433,6 +444,24 @@ def removeAuthorInfo(ep):
         obj.setCreationInfo(ci)
 
 
+def stripAuthorInfo(obj):
+    """
+    Remove author info from one object
+    """
+    try:
+        obj.creationInfo().setAuthor("")
+    except:
+        pass
+
+
+def stripCreationInfo(obj):
+    """
+    Remove the entire creation info from the object
+    """
+    empty = CreationInfo()
+    obj.setCreationInfo(empty)
+
+
 def stripOrigin(origin):
     """
     Remove all arrivals and magnitudes from the origin.
@@ -446,6 +475,14 @@ def stripOrigin(origin):
         origin.removeMagnitude(0)
     while origin.stationMagnitudeCount() > 0:
         origin.removeStationMagnitude(0)
+
+
+def stripMomentTensor(mt):
+    mt.setGreensFunctionID("")
+    while mt.momentTensorStationContributionCount() > 0:
+        mt.removeMomentTensorStationContribution(0)
+    while mt.momentTensorPhaseSettingCount() > 0:
+        mt.removeMomentTensorPhaseSetting(0)
 
 
 def sortedByCreationTime(objects):

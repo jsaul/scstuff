@@ -14,75 +14,110 @@ from seiscomp.datamodel import \
     Magnitude, Pick, Amplitude, CreationInfo
 
 
-def loadEvent(query, eventID):
+def loadEvent(query, publicID, full=True):
     """
-    Retrieve event from DB incl. children
+    Retrieve an event from DB
 
-    Returns either the event instance
-    or None if event could not be loaded.
+    Returns either the event instance or None if it could not be loaded.
 
-    Uses loadObject() to also load the children.
-    """
-    obj = query.loadObject(Event.TypeInfo(), eventID)
-    event = Event.Cast(obj)
-    if event:
-        if event.eventDescriptionCount() == 0:
-            query.loadEventDescriptions(event)
-        return event
+    If full==False, getObject() is used, which is very fast as it
+    doesn't load all children. Children included anyway are
+        preferredOriginID
+        preferredMagnitudeID
+        preferredFocalMechanismID
+        creationInfo
 
-
-def loadOrigin(query, originID, strip=False):
-    """
-    Retrieve origin from DB without children
-
-    Returns either the origin instance
-    or None if origin could not be loaded.
+    if full==True, loadObject() is used to additionally load the children:
+        comment
+        description
+        originReference
+        focalMechanismReference
     """
 
-    # Remark: An Origin can be loaded using loadObject() and
-    # getObject(). The difference is that getObject() doesn't
-    # load the arrivals hence is a *lot* faster.
-    # obj = query.loadObject(Origin.TypeInfo(), originID)
-    obj = query.getObject(Origin.TypeInfo(), originID)
-    origin = Origin.Cast(obj)
-    if origin:
-        if strip:
-            # OBSOLETE
-            scstuff.util.stripOrigin(origin)
-        return origin
+    load = query.loadObject if full else query.getObject
+
+    obj = load(seiscomp.datamodel.Event.TypeInfo(), publicID)
+    obj = seiscomp.datamodel.Event.Cast(obj)
+
+    return obj  # may be None
 
 
-def loadMagnitude(query, magnitudeID):
+def loadOrigin(query, publicID, full=True):
     """
-    Retrieve magnitude from DB without children
+    Retrieve an origin from DB
 
-    Returns either the Magnitude instance
-    or None if Magnitude could not be loaded.
+    Returns either the origin instance or None if it could not be loaded.
+
+    If full==False, getObject() is used, which is very fast as it
+    doesn't load all children. Children included anyway are
+        creationInfo
+        quality
+        uncertainty
+
+    if full==True, loadObject() is used to additionally load the children:
+        arrival
+        comment
+        magnitude
+        stationMagnitude
     """
-    obj = query.getObject(Magnitude.TypeInfo(), magnitudeID)
-    magnitude = Magnitude.Cast(obj)
-    if magnitude:
-        return magnitude
+
+    load = query.loadObject if full else query.getObject
+    obj = load(seiscomp.datamodel.Origin.TypeInfo(), publicID)
+    obj = seiscomp.datamodel.Origin.Cast(obj)
+    return obj  # may be None
 
 
-def loadFocalMechanism(query, fmid, strip=False):
+def loadMagnitude(query, publicID, full=True):
     """
-    Retrieve FocalMechanism from DB without children
+    Retrieve a magnitude from DB
 
-    Returns either the FocalMechanism instance
-    or None if FocalMechanism could not be loaded.
+    Returns either the magnitude instance or None if it could not be loaded.
+
+    If full==False, getObject() is used, which is very fast as it
+    doesn't load all children. Children included anyway are
+        creationInfo
+
+    if full==True, loadObject() is used to additionally load the children:
+        comment
     """
-    # TODO: check
-    obj = query.getObject(FocalMechanism.TypeInfo(), fmid)
-    focalMechanism = FocalMechanism.Cast(obj)
-    if focalMechanism:
-        query.loadMomentTensors(focalMechanism)
-    return focalMechanism
+
+    load = query.loadObject if full else query.getObject
+    obj = load(seiscomp.datamodel.Magnitude.TypeInfo(), publicID)
+    obj = seiscomp.datamodel.Magnitude.Cast(obj)
+    return obj  # may be None
 
 
-def getOrigins(query, eventID):
+def loadFocalMechanism(query, publicID, full=True):
     """
-    This is an extended DatabaseQuery.getOrigins(eventID)
+    Retrieve a focal mechanism from DB
+
+    Returns either the focal mechanism instance or None if it could not
+    be loaded.
+
+    If full==False, getObject() is used, which is very fast as it
+    doesn't load all children. Children included anyway are
+        creationInfo
+        nodalPlanes
+        principalAxes
+
+    if full==True, loadObject() is used to additionally load the children:
+        comment
+        momentTensor
+
+    Note that even with full==True, the moment magnitude is not loaded
+    automatically. There is a derivedOriginID, which refers to an origin
+    that must be loaded separately with loadOrigin(..., full=True) and
+    which then contains the moment magnitude as child.
+    """
+    load = query.loadObject if full else query.getObject
+    obj = load(seiscomp.datamodel.FocalMechanism.TypeInfo(), publicID)
+    obj = seiscomp.datamodel.FocalMechanism.Cast(obj)
+    return obj  # may be None
+
+
+def loadOriginsForEvent(query, publicID, full=False):
+    """
+    Retrieve all origins from DB for an event with given publicID.
 
     The issue with DatabaseQuery.getOrigins() is that it does not retrieve
     Origin objects for which there is no OriginReference. Origins like that
@@ -90,41 +125,68 @@ def getOrigins(query, eventID):
 
     In a second query it also retrieves the FocalMechanism's, loads the
     MomentTensor children and the Origin's referenced from there.
+
+    Warning: This can be slow if full==True and if there are many origins.
     """
     origins = list()
-    for origin in query.getOrigins(eventID):
-        origin = Origin.Cast(origin)
+    for origin in query.getOrigins(publicID):
+        origin = seiscomp.datamodel.Origin.Cast(origin)
         if not origin:
             continue
         origins.append(origin)
-        #### UNFINISHED ####
-    return origins
+
+    focalMechanisms = list()
+    for focalMechanism in query.getFocalMechanismsDescending(publicID):
+        focalMechanism = seiscomp.datamodel.FocalMechanism.Cast(focalMechanism)
+        focalMechanisms.append(focalMechanism)
+    for focalMechanism in focalMechanisms:
+        query.loadMomentTensors(focalMechanism)
+        momentTensorCount = focalMechanism.momentTensorCount()
+        for i in range(momentTensorCount):
+            momentTensor = focalMechanism.momentTensor(i)
+            derivedOriginID = momentTensor.derivedOriginID()
+            if derivedOriginID:
+                origin = loadOrigin(query, derivedOriginID, full=False)
+            origins.append(origin)
+
+    if not full:
+        return origins
+
+    fullOrigins = list()
+    for origin in origins:
+        fullOrigin = loadOrigin(query, origin.publicID(), full=full)
+        fullOrigins.append(fullOrigin)
+
+    return full_origins
 
 
-def stripCreationInfo(obj):
-    # #strip creationInfo entirely:
-    # empty = CreationInfo()
-    # obj.setCreationInfo(empty)
-    obj.creationInfo().setAuthor("")
+getOrigins = loadOriginsForEvent
 
 
-def stripAuthorInfo(obj):
-    try:
-        obj.creationInfo().setAuthor("")
-    except:
-        pass
+def loadFocalMechanismsForEvent(query, publicID, full=False):
+    """
+    Retrieve all focal mechanisms from DB for an event with given publicID.
+    """
+    focalMechanisms = list()
+    for focalMechanism in query.getFocalMechanismsDescending(publicID):
+        focalMechanism = seiscomp.datamodel.FocalMechanism.Cast(focalMechanism)
+        focalMechanisms.append(focalMechanism)
+
+    if not full:
+        return focalMechanisms
+
+    fullFocalMechanisms = list()
+    for focalMechanism in focalMechanisms:
+        fullFocalMechanism = loadfocalMechanism(query, focalMechanism.publicID(), full=full)
+        fullFocalMechanisms.append(fullFocalMechanism)
+
+    return fullFocalMechanisms
 
 
-def stripMomentTensor(mt):
-    mt.setGreensFunctionID("")
-    while mt.momentTensorStationContributionCount() > 0:
-        mt.removeMomentTensorStationContribution(0)
-    while mt.momentTensorPhaseSettingCount() > 0:
-        mt.removeMomentTensorPhaseSetting(0)
-
-
-def stripOrigin(origin):
-    return scstuff.util.stripOrigin(origin)
+stripAuthorInfo = scstuff.util.stripAuthorInfo
+stripCreationInfo = scstuff.util.stripCreationInfo
+stripOrigin = scstuff.util.stripOrigin
+stripMomentTensor = scstuff.util.stripMomentTensor
 
 
 def loadCompleteEvent(
@@ -177,14 +239,6 @@ def loadCompleteEvent(
     preferredOrigin = None
     preferredFocalMechanism = None
 
-#   if preferred:
-#       preferredOrigin = loadOrigin(query, event.preferredOriginID())
-#       if preferredOrigin is None:
-#           raise ValueError(
-#               "unknown origin '" + event.preferredOriginID() + "'")
-#       stripOrigin(preferredOrigin)
-#       origins[event.preferredOriginID()] = preferredOrigin
-#   else:
 
     # Load all origins that are children of EventParameters. Currently
     # this does not load derived origins because for these there is no
@@ -235,14 +289,15 @@ def loadCompleteEvent(
             # OriginReference. So rather than a warning we only issue a
             # debug message.
             #
-            seiscomp.logging.debug("%s: triggering origin %s not in origins" % (eventID, triggeringOriginID))
+            msg = "%s: triggering origin %s not in origins" % (eventID, triggeringOriginID)
+            seiscomp.logging.debug(msg)
             triggeringOrigin = loadOrigin(query, triggeringOriginID)
             if triggeringOrigin is None:
-                seiscomp.logging.warning("%s: failed to load triggering origin %s" % (eventID, triggeringOriginID))
+                msg = "%s: failed to load triggering origin %s" % (eventID, triggeringOriginID)
+                seiscomp.logging.warning(msg)
             else:
                 stripOrigin(triggeringOrigin)
                 origins[triggeringOriginID] = triggeringOrigin
-
 
     # Load arrivals, comments, magnitudes into origins
     for originID in origins:
@@ -253,7 +308,6 @@ def loadCompleteEvent(
         if comments:
             query.loadComments(origin)
         query.loadMagnitudes(origin)
-
 
     if event.preferredOriginID():
         preferredOriginID = event.preferredOriginID()
@@ -275,16 +329,11 @@ def loadCompleteEvent(
             for i in range(origin.magnitudeCount()):
                 magnitude = origin.magnitude(i)
                 magnitudes[magnitude.publicID()] = magnitude
-    # TODO station magnitudes
 
     preferredMagnitude = None
     if event.preferredMagnitudeID():
         if event.preferredMagnitudeID() in magnitudes:
             preferredMagnitude = magnitudes[event.preferredMagnitudeID()]
-#       for magnitudeID in magnitudes:
-#           magnitude = magnitudes[magnitudeID]
-#           if magnitude.publicID() == event.preferredMagnitudeID():
-#               preferredMagnitude = magnitude
         if not preferredMagnitude:
             seiscomp.logging.warning("%s: magnitude %s not found" % (eventID, event.preferredMagnitudeID()))
             # Try to load from memory
@@ -298,14 +347,10 @@ def loadCompleteEvent(
 
     # Load focal mechanism, moment tensor, moment magnitude and related origins
     momentTensor = momentMagnitude = derivedOrigin = triggeringOrigin = None
-#   preferredFocalMechanism = loadFocalMechanism(
-#       query, event.preferredFocalMechanismID())
     if event.preferredFocalMechanismID():
         preferredFocalMechanism = focalMechanisms[event.preferredFocalMechanismID()]
-#   if preferredFocalMechanism:
         for i in range(preferredFocalMechanism.momentTensorCount()):
             momentTensor = preferredFocalMechanism.momentTensor(i)
-            stripMomentTensor(momentTensor)
 
         if preferredFocalMechanism.triggeringOriginID():
             if event.preferredOriginID() == preferredFocalMechanism.triggeringOriginID():
@@ -325,10 +370,8 @@ def loadCompleteEvent(
                     seiscomp.logging.warning("triggering origin %s not in database either" % preferredFocalMechanism.triggeringOriginID())
                     raise RuntimeError()
 
-            # TODO: Strip triggering origin if it is not the preferred origin
 
         if preferredFocalMechanism.momentTensorCount() > 0:
-            # FIXME What if there is more than one MT?
             momentTensor = preferredFocalMechanism.momentTensor(0)
             if momentTensor.derivedOriginID():
                 if momentTensor.derivedOriginID() not in origins:
@@ -345,30 +388,12 @@ def loadCompleteEvent(
                         query, momentTensor.momentMagnitudeID())
 
         # Take care of FocalMechanism and related references
-#       if derivedOrigin:
-#           event.add(OriginReference(derivedOrigin.publicID()))
-#       if triggeringOrigin:
-#           if event.preferredOriginID() != triggeringOrigin.publicID():
-#               event.add(OriginReference(triggeringOrigin.publicID()))
         while (event.focalMechanismReferenceCount() > 0):
             event.removeFocalMechanismReference(0)
         if preferredFocalMechanism:
             event.add(FocalMechanismReference(preferredFocalMechanism.publicID()))
 
-    # Strip creation info
-    includeFullCreationInfo = True
-    if not includeFullCreationInfo:
-        stripAuthorInfo(event)
 
-#       if preferredFocalMechanism:
-#           stripCreationInfo(preferredFocalMechanism)
-#           for i in range(preferredFocalMechanism.momentTensorCount()):
-#               stripCreationInfo(preferredFocalMechanism.momentTensor(i))
-        for org in [ preferredOrigin, triggeringOrigin, derivedOrigin ]:
-            if org is not None:
-                stripAuthorInfo(org)
-                for i in range(org.magnitudeCount()):
-                    stripAuthorInfo(org.magnitude(i))
 
     picks = dict()
     ampls = dict()
@@ -385,8 +410,6 @@ def loadCompleteEvent(
 
     # Populate EventParameters instance
     ep.add(event)
-#   if preferredMagnitude and preferredMagnitude is not momentMagnitude:
-#       preferredOrigin.add(preferredMagnitude)
 
     while (event.originReferenceCount() > 0):
         event.removeOriginReference(0)
@@ -395,13 +418,9 @@ def loadCompleteEvent(
         ep.add(origins[originID])
 
     if preferredFocalMechanism:
-#       if triggeringOrigin:
-#           if triggeringOrigin is not preferredOrigin:
-#               ep.add(triggeringOrigin)
         if derivedOrigin:
             if momentMagnitude:
                 derivedOrigin.add(momentMagnitude)
-#           ep.add(derivedOrigin)
         ep.add(preferredFocalMechanism)
 
     for pickID in picks:
