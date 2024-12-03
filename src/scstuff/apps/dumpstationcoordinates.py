@@ -15,14 +15,22 @@
 # https://www.gnu.org/licenses/agpl-3.0.html.                             #
 ###########################################################################
 
+"""
+This utility
+* reads a SeisComP inventory from database
+* iterates over the inventory
+* dumps network/station code, latitude, longitude, elevation for each station in inventory
+* serves as an example on how it can be done in SeisComP/Python using the application class
+"""
+
 import sys
 import seiscomp.client
 import seiscomp.core
 from scstuff.inventory import InventoryIterator
 
-class InvApp(seiscomp.client.Application):
+class App(seiscomp.client.Application):
     def __init__(self, argc, argv):
-        seiscomp.client.Application.__init__(self, argc, argv)
+        super().__init__(argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
@@ -51,12 +59,10 @@ class InvApp(seiscomp.client.Application):
         return True
 
 
-def main(argc, argv):
-    app = InvApp(argc, argv)
+def main():
+    app = App(len(sys.argv), sys.argv)
     app()
 
 
 if __name__ == "__main__":
-    argc = len(sys.argv)
-    argv = sys.argv
-    main(argc, argv)
+    main()

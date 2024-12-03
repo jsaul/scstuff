@@ -15,6 +15,17 @@
 # https://www.gnu.org/licenses/agpl-3.0.html.                             #
 ###########################################################################
 
+"""
+A utility to fix the magnitude type by sending a journal message.
+
+Example:
+
+    scstuff-set-magtype --event gfz2019abcd --magnitude-type Mw
+
+to set the magnitude type of event gfz2019abcd to "Mw".
+"""
+
+
 import sys
 import socket
 import seiscomp.core
@@ -23,10 +34,10 @@ import seiscomp.client
 import seiscomp.logging
 
 
-class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
+class App(seiscomp.client.Application):
 
     def __init__(self, argc, argv):
-        seiscomp.client.Application.__init__(self, argc, argv)
+        super().__init__(argc, argv)
         self.setDatabaseEnabled(False, False)
         self.setMessagingEnabled(True)
 
@@ -38,10 +49,10 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
         self.commandline().addStringOption("Event", "event,E", "specify event publicID")
         self.commandline().addGroup("Magnitude")
         self.commandline().addStringOption("Magnitude", "magnitude-type,Y", "type of magnitude to set preferred")
-        return seiscomp.client.Application.createCommandLineDescription(self)
+        return super().createCommandLineDescription()
 
     def validateParameters(self):
-        if not seiscomp.client.Application.validateParameters(self):
+        if not super().validateParameters():
             return False
 
         try:
@@ -120,7 +131,7 @@ class PreferredMagnitudeTypeSetterApp(seiscomp.client.Application):
 
 
 def main():
-    app = PreferredMagnitudeTypeSetterApp(len(sys.argv), sys.argv)
+    app = App(len(sys.argv), sys.argv)
     app()
 
 

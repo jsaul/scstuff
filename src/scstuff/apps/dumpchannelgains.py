@@ -20,9 +20,10 @@ import seiscomp.core
 import seiscomp.client
 from scstuff.inventory import InventoryIterator
 
-class InvApp(seiscomp.client.Application):
+
+class App(seiscomp.client.Application):
     def __init__(self, argc, argv):
-        seiscomp.client.Application.__init__(self, argc, argv)
+        super.__init__(argc, argv)
         self.setMessagingEnabled(False)
         self.setDatabaseEnabled(True, True)
         self.setLoggingToStdErr(True)
@@ -45,11 +46,9 @@ class InvApp(seiscomp.client.Application):
 
 
 def main(argc, argv):
-    app = InvApp(argc, argv)
+    app = App(argc, argv)
     app()
 
 
 if __name__ == "__main__":
-    argc = len(sys.argv)
-    argv = sys.argv
-    main(argc, argv)
+    main(len(sys.argv), sys.argv)
